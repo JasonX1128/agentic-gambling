@@ -3,7 +3,7 @@
 import { useAgentContext, useFrontendTool } from "@copilotkit/react-core/v2/headless";
 import type { JsonSerializable } from "@copilotkit/react-core/v2/headless";
 import { z } from "zod";
-import type { DemoRun } from "@/lib/domain";
+import type { DemoRun, PaperCycleResult } from "@/lib/domain";
 
 async function apiJson<T>(path: string, init?: RequestInit, signal?: AbortSignal): Promise<T> {
   const response = await fetch(path, {
@@ -34,12 +34,25 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
         sector: opportunity.sector,
         side: opportunity.side,
         expectedValue: opportunity.forecast.expectedValue,
+        directionalEdge: Math.abs(opportunity.forecast.expectedValue),
         confidence: opportunity.forecast.confidence,
         riskApproved: opportunity.risk.approved,
+        riskCounterOffer: opportunity.risk.counterOffer,
+        hardBlockedBy: opportunity.risk.hardBlockedBy,
+        negotiableBlockedBy: opportunity.risk.negotiableBlockedBy,
         complianceApproved: opportunity.compliance.approved,
         status: opportunity.status
       })),
       integrations: data.integrationStatus,
+      fundAgents: data.fundAgents.map((agent) => ({
+        name: agent.name,
+        role: agent.role,
+        status: agent.status,
+        operatingMode: agent.operatingMode,
+        decisionRights: agent.decisionRights,
+        systemPrompt: agent.systemPrompt,
+        lastDecision: agent.lastDecision
+      })),
       pods: data.pods
     } as unknown as JsonSerializable;
 
@@ -139,6 +152,18 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
       apiJson(`/api/trades/${encodeURIComponent(opportunityId)}/approve`, {
         method: "POST",
         body: JSON.stringify({ source: "copilot" })
+      }, signal)
+  });
+
+  useFrontendTool({
+    name: "runAgentPaperCycle",
+    description:
+      "Ask the CIO, CRO, Compliance, Research, and Execution agents to select and place the current paper-trading slate.",
+    parameters: z.object({}),
+    handler: async (_args, { signal }) =>
+      apiJson<PaperCycleResult>("/api/agents/paper-cycle", {
+        method: "POST",
+        body: JSON.stringify({})
       }, signal)
   });
 

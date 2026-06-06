@@ -5,7 +5,9 @@ const requiredFiles = [
   "lib/redis/coordination.ts",
   "lib/observability/weave.ts",
   "lib/llm/health.ts",
+  "lib/agents/paper-cycle.ts",
   "app/api/copilotkit/[[...slug]]/route.ts",
+  "app/api/agents/paper-cycle/route.ts",
   "components/copilot/EventFundCopilotActions.tsx",
   "lib/risk/engine.ts",
   "lib/compliance/engine.ts",
@@ -41,7 +43,8 @@ const checks = [
       copilotRoute.includes("createCopilotRuntimeHandler") &&
       copilotRoute.includes("default")
   ],
-  ["CopilotKit action surface includes paper approval", copilotActions.includes("approvePaperTrade")]
+  ["CopilotKit action surface includes paper approval", copilotActions.includes("approvePaperTrade")],
+  ["CopilotKit action surface includes agent paper cycle", copilotActions.includes("runAgentPaperCycle")]
 ];
 
 for (const [label, ok] of checks) {

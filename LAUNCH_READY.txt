@@ -1,0 +1,5 @@
+launch ready
+
+EventFund OS is ready for remote Codex handoff and paper-trading launch iteration.
+Live trading remains disabled by default and gated behind explicit environment flags,
+risk checks, compliance checks, Redis idempotency, and Kalshi credentials.

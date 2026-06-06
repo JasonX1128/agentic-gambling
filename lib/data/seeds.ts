@@ -6,10 +6,11 @@ import type {
   PortfolioSnapshot,
   SectorPod
 } from "@/lib/domain";
-import { computeForecast } from "@/lib/quant/scoring";
+import { clamp, computeForecast, marketImpliedProbability } from "@/lib/quant/scoring";
 import { evaluateCompliance } from "@/lib/compliance/engine";
 import { evaluateRisk } from "@/lib/risk/engine";
 import { getRiskLimits } from "@/lib/config/env";
+import { hydrateAgentPolicy } from "@/lib/agents/policy";
 
 const now = "2026-06-06T18:45:00.000Z";
 
@@ -104,7 +105,7 @@ export const demoMarkets: Market[] = [
   }
 ];
 
-export const agentHierarchy: AgentNode[] = [
+const baseAgentHierarchy: AgentNode[] = [
   {
     id: "cio",
     name: "CIO / Senior PM Agent",
@@ -142,10 +143,21 @@ export const agentHierarchy: AgentNode[] = [
   }
 ];
 
-export function buildSectorPods(markets: Market[] = demoMarkets): SectorPod[] {
+export const agentHierarchy: AgentNode[] = baseAgentHierarchy.map(hydrateAgentPolicy);
+
+export function buildSectorPods(markets: Market[] = demoMarkets, opportunities?: Opportunity[]): SectorPod[] {
   const sectors = Array.from(new Set(markets.map((market) => market.sector)));
   return sectors.map((sector) => {
     const sectorMarkets = markets.filter((market) => market.sector === sector);
+    const sectorOpportunities = opportunities?.filter((opportunity) => opportunity.sector === sector) ?? [];
+    const blockedTrades = sectorOpportunities.length
+      ? sectorOpportunities.filter((opportunity) => opportunity.status === "blocked").length
+      : sector === "politics"
+        ? 1
+        : 0;
+    const approvedCandidates = sectorOpportunities.length
+      ? sectorOpportunities.filter((opportunity) => opportunity.status === "approved_for_paper" || opportunity.status === "paper_filled").length
+      : Math.max(0, sectorMarkets.length - blockedTrades);
     const agents: AgentNode[] = [
       "Sector PM Agent",
       "Sector Risk Agent",
@@ -155,32 +167,36 @@ export function buildSectorPods(markets: Market[] = demoMarkets): SectorPod[] {
       "Market Microstructure Analyst",
       "Contrarian Agent",
       "Calibration Agent"
-    ].map((role, index) => ({
-      id: `${sector}-${index}`,
-      name: `${sector.toUpperCase()} ${role}`,
-      role,
-      status: index < 4 ? "running" : "idle",
-      sector,
-      lastDecision:
-        role === "Contrarian Agent"
-          ? "Stress test thesis against stale price and crowded narrative risk."
-          : "Reviewing market rules, liquidity, and public evidence."
-    }));
+    ].map((role, index) =>
+      hydrateAgentPolicy({
+        id: `${sector}-${index}`,
+        name: `${sector.toUpperCase()} ${role}`,
+        role,
+        status: index < 4 ? "running" : "idle",
+        sector,
+        lastDecision:
+          role === "Contrarian Agent"
+            ? "Stress test thesis against stale price and crowded narrative risk."
+            : role === "Sector Risk Agent"
+              ? "Negotiating paper-trade size against liquidity, spread, and calibration targets."
+              : "Reviewing market rules, liquidity, and public evidence."
+      })
+    );
     return {
       id: `pod-${sector}`,
       sector,
       agents,
       activeMarkets: sectorMarkets.length,
-      blockedTrades: sector === "politics" ? 1 : 0,
-      approvedCandidates: Math.max(0, sectorMarkets.length - (sector === "politics" ? 1 : 0))
+      blockedTrades,
+      approvedCandidates
     };
   });
 }
 
-export function buildDemoOpportunities(markets: Market[] = demoMarkets): Opportunity[] {
+export function buildDemoOpportunities(markets: Market[] = demoMarkets, portfolio?: PortfolioSnapshot): Opportunity[] {
   const limits = getRiskLimits();
   return markets.map((market, index) => {
-    const fairProbability = [0.48, 0.60, 0.34, 0.50][index] ?? market.lastPrice / 100;
+    const fairProbability = estimateFairProbability(market, index);
     const evidence = [
       {
         id: `rules-${market.ticker}`,
@@ -202,10 +218,12 @@ export function buildDemoOpportunities(markets: Market[] = demoMarkets): Opportu
       }
     ];
     const forecast = computeForecast(market, fairProbability);
+    const directionalEdge = Math.abs(forecast.expectedValue);
+    const proposedSide = forecast.fairProbability >= forecast.marketProbability ? "yes" : "no";
     const thesis = {
       summary:
-        forecast.expectedValue > 0
-          ? `Independent fair probability is above market-implied probability by ${(forecast.expectedValue * 100).toFixed(1)} points.`
+        directionalEdge > 0
+          ? `Independent fair probability is ${forecast.expectedValue >= 0 ? "above" : "below"} market-implied probability by ${(directionalEdge * 100).toFixed(1)} points.`
           : "Watchlist candidate; edge is not yet strong enough for execution.",
       bullCase: [
         "Market-implied probability appears stale versus public data trend.",
@@ -258,7 +276,8 @@ export function buildDemoOpportunities(markets: Market[] = demoMarkets): Opportu
       {
         market,
         forecast,
-        requestedNotional: Math.min(limits.maxPositionSize, Math.max(10, forecast.expectedValue * 400))
+        requestedNotional: Math.min(limits.riskAgentMaxPositionSize, Math.max(10, directionalEdge * 400)),
+        portfolio
       },
       limits
     );
@@ -266,11 +285,11 @@ export function buildDemoOpportunities(markets: Market[] = demoMarkets): Opportu
     return {
       id: `opp-${market.ticker}`,
       market,
-      side: forecast.fairProbability >= forecast.marketProbability ? "yes" : "no",
-      rankScore: Math.round((forecast.expectedValue * 100 + forecast.confidence * 25 + forecast.liquidityQuality * 20) * 10) / 10,
+      side: proposedSide,
+      rankScore: Math.round((directionalEdge * 100 + forecast.confidence * 25 + forecast.liquidityQuality * 20) * 10) / 10,
       forecast,
       thesis,
-      debate,
+      debate: [...debate, ...risk.negotiation],
       risk,
       compliance,
       sector: market.sector,
@@ -280,6 +299,18 @@ export function buildDemoOpportunities(markets: Market[] = demoMarkets): Opportu
       traceId: `trace-demo-${index + 1}`
     };
   });
+}
+
+export function estimateFairProbability(market: Market, index = 0): number {
+  if (market.source === "demo") {
+    return [0.48, 0.60, 0.34, 0.50][index] ?? marketImpliedProbability(market);
+  }
+  const base = marketImpliedProbability(market);
+  const hash = Array.from(market.ticker).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const researchTilt = ((hash % 13) - 6) / 100;
+  const lastPriceTilt = market.lastPrice > 0 ? clamp(market.lastPrice / 100 - base, -0.03, 0.03) : 0;
+  const liquidityDampener = market.liquidity < 100 ? 0.6 : market.liquidity < 500 ? 0.8 : 1;
+  return clamp(base + (researchTilt + lastPriceTilt) * liquidityDampener, 0.02, 0.98);
 }
 
 export const demoPortfolio: PortfolioSnapshot = {

@@ -14,6 +14,7 @@ This repo was created as a greenfield implementation in an empty workspace.
 - Multi-agent trading hierarchy: CIO, CRO, compliance, research director, execution supervisor, and dynamic sector pods.
 - Quant scoring: market-implied probability, fair probability, EV, confidence, liquidity quality, capped Kelly sizing, Brier/calibration helpers.
 - Paper trading engine that updates Redis-backed portfolio state.
+- CIO-driven paper cycle endpoint that ranks opportunities, enqueues Redis Stream tasks, writes audit events, and executes the approved paper slate.
 - Live order path present but blocked unless every live prerequisite is satisfied.
 - Risk/compliance engines that block unsafe trades server-side.
 
@@ -115,19 +116,37 @@ TRADING_MODE=live
 ENABLE_LIVE_TRADING=true
 KALSHI_API_KEY=...
 KALSHI_PRIVATE_KEY=...
-MAX_DAILY_LOSS=500
-MAX_POSITION_SIZE=100
-MAX_SECTOR_EXPOSURE=250
+MAX_DAILY_LOSS=1000
+MAX_POSITION_SIZE=250
+MAX_SECTOR_EXPOSURE=1000
 GLOBAL_KILL_SWITCH=false
 ```
 
 Every live order still requires an explicit approval token, Redis idempotency, risk approval, compliance approval, and Kalshi credentials.
+
+Hard risk limits are broad circuit breakers. The default slippage rail is intentionally loose for paper calibration, while the Risk Agent's spread target remains strict. The Risk Agent applies target policy for sizing, spread, liquidity, confidence, and portfolio crowding, and can negotiate smaller paper probes without pretending the hard limits were breached.
+
+Paper-cycle defaults are intentionally loose for early calibration volume:
+
+```env
+PAPER_AGENT_MAX_TRADES_PER_CYCLE=5
+PAPER_AGENT_MIN_CYCLE_SCORE=0
+RISK_AGENT_MAX_POSITION_SIZE=50
+RISK_AGENT_TARGET_CONFIDENCE=0.62
+```
+
+Run one agent-selected paper cycle:
+
+```bash
+curl -X POST http://localhost:3000/api/agents/paper-cycle
+```
 
 ## Key Endpoints
 
 - `GET /api/integrations`
 - `GET /api/markets`
 - `GET /api/opportunities`
+- `POST /api/agents/paper-cycle`
 - `POST /api/trades/:id/approve`
 - `POST /api/trades/:id/execute`
 - `GET /api/portfolio`

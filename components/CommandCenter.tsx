@@ -15,7 +15,7 @@ import {
   WalletCards
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { DemoRun, IntegrationStatus, Opportunity } from "@/lib/domain";
+import type { AgentNode, DemoRun, IntegrationStatus, Opportunity } from "@/lib/domain";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { EventFundCopilotActions } from "@/components/copilot/EventFundCopilotActions";
 import { Providers } from "@/app/providers";
@@ -178,6 +178,11 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
 
           <div className="grid grid-cols-[1fr_1fr] gap-4 px-5 pb-5">
             <Panel title="Trading Agent Swarm" icon={<CircuitBoard className="h-4 w-4" />} id="agents-panel">
+              <div className="mb-4 grid grid-cols-5 gap-2">
+                {data.fundAgents.map((agent) => (
+                  <AgentCard key={agent.id} agent={agent} />
+                ))}
+              </div>
               <div className="grid grid-cols-3 gap-3">
                 {data.pods.map((pod) => (
                   <div key={pod.id} className="rounded-md border border-line bg-white p-3">
@@ -222,6 +227,26 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
   );
 }
 
+function AgentCard({ agent }: { agent: AgentNode }) {
+  return (
+    <div className="rounded-md border border-line bg-slate-50 p-2 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate font-semibold text-slate-800">{agent.name}</div>
+          <div className="font-mono text-[11px] text-slate-500">{agent.operatingMode ?? "debate"}</div>
+        </div>
+        <StatusPill tone={agent.status === "running" ? "success" : agent.status === "blocked" ? "danger" : "info"}>
+          {agent.status}
+        </StatusPill>
+      </div>
+      <div className="mt-2 line-clamp-2 text-slate-600">{agent.systemPrompt}</div>
+      <div className="mt-2 border-t border-slate-200 pt-2 text-slate-500">
+        {(agent.decisionRights ?? []).slice(0, 2).join(" | ")}
+      </div>
+    </div>
+  );
+}
+
 function Metric({ label, value, tone }: { label: string; value: string; tone?: "positive" | "negative" }) {
   return (
     <div className="rounded-md border border-line bg-white px-3 py-2">
@@ -247,6 +272,7 @@ function Panel({ title, icon, children, id }: { title: string; icon: React.React
 
 function OpportunityRow({ opportunity }: { opportunity: Opportunity }) {
   const approved = opportunity.risk.approved && opportunity.compliance.approved;
+  const directionalEdge = Math.abs(opportunity.forecast.expectedValue);
   return (
     <div className="rounded-md border border-line bg-white p-3">
       <div className="flex items-start justify-between gap-3">
@@ -258,12 +284,37 @@ function OpportunityRow({ opportunity }: { opportunity: Opportunity }) {
       </div>
       <div className="mt-3 grid grid-cols-5 gap-2 text-xs">
         <Cell label="Side" value={opportunity.side.toUpperCase()} />
-        <Cell label="EV" value={`${(opportunity.forecast.expectedValue * 100).toFixed(1)}pt`} />
+        <Cell label="Edge" value={`${(directionalEdge * 100).toFixed(1)}pt`} />
         <Cell label="Conf" value={`${(opportunity.forecast.confidence * 100).toFixed(0)}%`} />
         <Cell label="Risk" value={String(opportunity.risk.riskScore)} />
         <Cell label="Size" value={`$${opportunity.risk.positionSize}`} />
       </div>
       <div className="mt-2 text-xs text-slate-600">{opportunity.thesis.summary}</div>
+      <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-2 text-xs">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-semibold text-slate-700">Risk negotiation</span>
+          <StatusPill tone={opportunity.risk.counterOffer.accepted ? "success" : opportunity.risk.hardBlockedBy.length ? "danger" : "warning"}>
+            {opportunity.risk.counterOffer.accepted ? "accepted" : opportunity.risk.hardBlockedBy.length ? "hard stop" : "countered"}
+          </StatusPill>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          <Cell label="Risk size" value={`$${opportunity.risk.counterOffer.positionSize}`} />
+          <Cell label="Max entry" value={`${opportunity.risk.counterOffer.maxEntryPrice}c`} />
+          <Cell label="Max spread" value={`${opportunity.risk.counterOffer.maxSpreadBps}bps`} />
+        </div>
+        {opportunity.risk.counterOffer.conditions.length ? (
+          <div className="mt-2 text-slate-600">{opportunity.risk.counterOffer.conditions[0]}</div>
+        ) : null}
+        {opportunity.risk.negotiation.length ? (
+          <div className="mt-2 space-y-1">
+            {opportunity.risk.negotiation.slice(-2).map((turn, index) => (
+              <div key={`${opportunity.id}-risk-turn-${index}`} className="border-t border-slate-200 pt-1 text-slate-600">
+                <span className="font-medium text-slate-700">{turn.agent}:</span> {turn.message}
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

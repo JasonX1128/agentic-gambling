@@ -26,6 +26,12 @@ export type RiskLimits = {
   maxRuleAmbiguity: number;
   maxDrawdown: number;
   kellyFraction: number;
+  riskAgentMaxPositionSize: number;
+  riskAgentTargetSectorExposure: number;
+  riskAgentTargetLiquidity: number;
+  riskAgentTargetConfidence: number;
+  riskAgentTargetSlippageBps: number;
+  riskAgentMaxRiskScore: number;
 };
 
 export type Market = {
@@ -111,6 +117,29 @@ export type RiskDecision = {
   maxNotional: number;
   reasons: string[];
   blockedBy: string[];
+  hardBlockedBy: string[];
+  negotiableBlockedBy: string[];
+  counterOffer: RiskCounterOffer;
+  negotiation: RiskNegotiationTurn[];
+};
+
+export type RiskCounterOffer = {
+  accepted: boolean;
+  positionSize: number;
+  maxEntryPrice: number;
+  maxSpreadBps: number;
+  conditions: string[];
+  analystRequiredActions: string[];
+};
+
+export type RiskNegotiationTurn = {
+  agent: string;
+  role: string;
+  stance: "support" | "oppose" | "neutral";
+  message: string;
+  scoreImpact: number;
+  constraint?: string;
+  proposedNotional?: number;
 };
 
 export type ComplianceDecision = {
@@ -142,6 +171,7 @@ export type TradeOrder = {
   id: string;
   opportunityId: string;
   ticker: string;
+  sector: string;
   mode: TradingMode;
   action: OrderAction;
   side: OrderSide;
@@ -211,6 +241,22 @@ export type AgentNode = {
   status: "idle" | "running" | "blocked" | "complete";
   lastDecision: string;
   sector?: string;
+  operatingMode?: "discover" | "debate" | "negotiate" | "approve" | "execute" | "monitor";
+  decisionRights?: string[];
+  systemPrompt?: string;
+};
+
+export type PaperCycleResult = {
+  cycleId: string;
+  evaluated: number;
+  eligible: number;
+  executed: number;
+  blocked: number;
+  skipped: number;
+  orders: TradeOrder[];
+  blockedOpportunities: Array<{ id: string; ticker: string; reasons: string[] }>;
+  portfolio: PortfolioSnapshot;
+  createdAt: string;
 };
 
 export type SectorPod = {
@@ -230,6 +276,7 @@ export type DemoRun = {
   opportunities: Opportunity[];
   portfolio: PortfolioSnapshot;
   activity: ActivityEvent[];
+  fundAgents: AgentNode[];
   pods: SectorPod[];
   integrationStatus: IntegrationStatus[];
 };

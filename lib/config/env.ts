@@ -25,19 +25,27 @@ const envSchema = z.object({
   OLLAMA_API_KEY: z.string().default("ollama"),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default("gpt-4o-mini"),
-  MAX_DAILY_LOSS: z.coerce.number().default(500),
-  MAX_WEEKLY_LOSS: z.coerce.number().default(1500),
-  MAX_POSITION_SIZE: z.coerce.number().default(100),
-  MAX_SECTOR_EXPOSURE: z.coerce.number().default(250),
-  MAX_CORRELATED_EXPOSURE: z.coerce.number().default(350),
-  MAX_OPEN_ORDERS: z.coerce.number().default(5),
-  MAX_SLIPPAGE_BPS: z.coerce.number().default(150),
-  MIN_LIQUIDITY: z.coerce.number().default(25),
-  MIN_CONFIDENCE: z.coerce.number().default(0.55),
-  MIN_EVIDENCE_QUALITY: z.coerce.number().default(0.55),
-  MAX_RULE_AMBIGUITY: z.coerce.number().default(0.35),
-  MAX_DRAWDOWN: z.coerce.number().default(1000),
-  KELLY_FRACTION: z.coerce.number().default(0.2)
+  MAX_DAILY_LOSS: z.coerce.number().default(1000),
+  MAX_WEEKLY_LOSS: z.coerce.number().default(3000),
+  MAX_POSITION_SIZE: z.coerce.number().default(250),
+  MAX_SECTOR_EXPOSURE: z.coerce.number().default(1000),
+  MAX_CORRELATED_EXPOSURE: z.coerce.number().default(1500),
+  MAX_OPEN_ORDERS: z.coerce.number().default(20),
+  MAX_SLIPPAGE_BPS: z.coerce.number().default(10000),
+  MIN_LIQUIDITY: z.coerce.number().default(1),
+  MIN_CONFIDENCE: z.coerce.number().default(0.35),
+  MIN_EVIDENCE_QUALITY: z.coerce.number().default(0.4),
+  MAX_RULE_AMBIGUITY: z.coerce.number().default(0.6),
+  MAX_DRAWDOWN: z.coerce.number().default(2000),
+  KELLY_FRACTION: z.coerce.number().default(0.25),
+  RISK_AGENT_MAX_POSITION_SIZE: z.coerce.number().default(50),
+  RISK_AGENT_TARGET_SECTOR_EXPOSURE: z.coerce.number().default(250),
+  RISK_AGENT_TARGET_LIQUIDITY: z.coerce.number().default(100),
+  RISK_AGENT_TARGET_CONFIDENCE: z.coerce.number().default(0.62),
+  RISK_AGENT_TARGET_SLIPPAGE_BPS: z.coerce.number().default(150),
+  RISK_AGENT_MAX_RISK_SCORE: z.coerce.number().default(65),
+  PAPER_AGENT_MAX_TRADES_PER_CYCLE: z.coerce.number().default(5),
+  PAPER_AGENT_MIN_CYCLE_SCORE: z.coerce.number().default(0)
 });
 
 export function getEnv() {
@@ -69,7 +77,21 @@ export function getRiskLimits(): RiskLimits {
     minEvidenceQuality: env.MIN_EVIDENCE_QUALITY,
     maxRuleAmbiguity: env.MAX_RULE_AMBIGUITY,
     maxDrawdown: env.MAX_DRAWDOWN,
-    kellyFraction: env.KELLY_FRACTION
+    kellyFraction: env.KELLY_FRACTION,
+    riskAgentMaxPositionSize: env.RISK_AGENT_MAX_POSITION_SIZE,
+    riskAgentTargetSectorExposure: env.RISK_AGENT_TARGET_SECTOR_EXPOSURE,
+    riskAgentTargetLiquidity: env.RISK_AGENT_TARGET_LIQUIDITY,
+    riskAgentTargetConfidence: env.RISK_AGENT_TARGET_CONFIDENCE,
+    riskAgentTargetSlippageBps: env.RISK_AGENT_TARGET_SLIPPAGE_BPS,
+    riskAgentMaxRiskScore: env.RISK_AGENT_MAX_RISK_SCORE
+  };
+}
+
+export function getPaperCycleConfig() {
+  const env = getEnv();
+  return {
+    maxTradesPerCycle: Math.max(1, Math.floor(env.PAPER_AGENT_MAX_TRADES_PER_CYCLE)),
+    minCycleScore: env.PAPER_AGENT_MIN_CYCLE_SCORE
   };
 }
 

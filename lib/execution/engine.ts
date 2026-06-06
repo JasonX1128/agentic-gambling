@@ -1,36 +1,34 @@
-import type { ActivityEvent, Opportunity, TradeOrder, TradingMode } from "@/lib/domain";
+import type { ActivityEvent, Opportunity, PortfolioSnapshot, TradeOrder, TradingMode } from "@/lib/domain";
 import { getEnv, getRiskLimits, livePrerequisites, boolEnv } from "@/lib/config/env";
-import { applyPaperFill } from "@/lib/portfolio/engine";
+import { applyPaperFill, getPortfolioSnapshot } from "@/lib/portfolio/engine";
 import { appendAuditEvent, requireRedisForTrading, withIdempotency } from "@/lib/redis/coordination";
 import { KalshiClient } from "@/lib/kalshi/client";
 import { evaluateRisk } from "@/lib/risk/engine";
 import { evaluateCompliance } from "@/lib/compliance/engine";
 import { traceAsync } from "@/lib/observability/weave";
 
-export async function approvePaperTrade(opportunity: Opportunity, source: TradeOrder["source"] = "operator") {
+export type PaperTradeResult = {
+  order: TradeOrder;
+  portfolio?: PortfolioSnapshot;
+  blocked: boolean;
+  replayed: boolean;
+};
+
+export async function approvePaperTrade(
+  opportunity: Opportunity,
+  source: TradeOrder["source"] = "operator"
+): Promise<PaperTradeResult> {
   return traceAsync("execution.paper_order", { opportunityId: opportunity.id, ticker: opportunity.market.ticker }, async () => {
     await requireRedisForTrading();
     const auditId = `audit-${Date.now()}`;
-    const order: TradeOrder = {
-      id: `paper-${opportunity.market.ticker}-${Date.now()}`,
-      opportunityId: opportunity.id,
-      ticker: opportunity.market.ticker,
-      mode: "paper",
-      action: "buy",
-      side: opportunity.side,
-      quantity: Math.max(1, Math.floor(opportunity.risk.positionSize / Math.max(1, opportunity.market.yesAsk))),
-      limitPrice: opportunity.side === "yes" ? opportunity.market.yesAsk : opportunity.market.noAsk,
-      status: "proposed",
-      source,
-      auditId,
-      traceId: opportunity.traceId,
-      createdAt: new Date().toISOString()
-    };
+    const portfolio = await getPortfolioSnapshot();
+    const draftOrder = buildTradeOrder(opportunity, "paper", source, auditId);
     const risk = evaluateRisk(
       {
         market: opportunity.market,
         forecast: opportunity.forecast,
-        requestedNotional: order.quantity * (order.limitPrice / 100)
+        requestedNotional: orderNotional(draftOrder),
+        portfolio
       },
       getRiskLimits()
     );
@@ -39,6 +37,9 @@ export async function approvePaperTrade(opportunity: Opportunity, source: TradeO
       thesis: opportunity.thesis,
       forecast: opportunity.forecast
     });
+    const order = risk.approved
+      ? buildTradeOrder({ ...opportunity, risk }, "paper", source, auditId)
+      : draftOrder;
     if (!risk.approved || !compliance.approved) {
       const blocked: TradeOrder = {
         ...order,
@@ -46,10 +47,10 @@ export async function approvePaperTrade(opportunity: Opportunity, source: TradeO
         rejectionReason: [...risk.reasons, ...compliance.blockedReasons].join(" ")
       };
       await appendAuditEvent(auditEvent("blocked", "Execution Supervisor Agent", blocked.rejectionReason ?? "Trade blocked.", "warning", auditId));
-      return { order: blocked, portfolio: undefined, blocked: true };
+      return { order: blocked, portfolio: undefined, blocked: true, replayed: false };
     }
-    const result = await withIdempotency(`paper:${opportunity.id}:${source}`, async () => {
-      const portfolio = await applyPaperFill(order, opportunity.market.lastPrice || order.limitPrice);
+    const result = await withIdempotency(`paper:${opportunity.id}:${source}:${new Date().toISOString().slice(0, 10)}`, async () => {
+      const portfolio = await applyPaperFill(order, markPriceForSide(opportunity));
       await appendAuditEvent(
         auditEvent(
           "paper_order",
@@ -61,7 +62,7 @@ export async function approvePaperTrade(opportunity: Opportunity, source: TradeO
       );
       return { order: { ...order, status: "paper_filled" as const }, portfolio, blocked: false };
     });
-    return result.value;
+    return { ...result.value, replayed: result.replayed };
   });
 }
 
@@ -88,22 +89,31 @@ export async function executeLiveTrade(opportunity: Opportunity, approvalToken?:
       return { blocked: true, code: "LIVE_MODE_NOT_ACTIVE", reasons: ["Server trading mode is not live."] };
     }
     await requireRedisForTrading();
+    const portfolio = await getPortfolioSnapshot();
+    const draftOrder = buildTradeOrder(opportunity, "live", "operator", `audit-${Date.now()}`);
+    const risk = evaluateRisk(
+      {
+        market: opportunity.market,
+        forecast: opportunity.forecast,
+        requestedNotional: orderNotional(draftOrder),
+        portfolio
+      },
+      getRiskLimits()
+    );
+    const compliance = evaluateCompliance({
+      market: opportunity.market,
+      thesis: opportunity.thesis,
+      forecast: opportunity.forecast
+    });
+    if (!risk.approved || !compliance.approved) {
+      return {
+        blocked: true,
+        code: "PRE_TRADE_REVIEW_BLOCKED",
+        reasons: [...risk.reasons, ...compliance.blockedReasons]
+      };
+    }
     const client = new KalshiClient();
-    const order: TradeOrder = {
-      id: `live-${opportunity.market.ticker}-${Date.now()}`,
-      opportunityId: opportunity.id,
-      ticker: opportunity.market.ticker,
-      mode: "live",
-      action: "buy",
-      side: opportunity.side,
-      quantity: Math.max(1, Math.floor(opportunity.risk.positionSize / Math.max(1, opportunity.market.yesAsk))),
-      limitPrice: opportunity.side === "yes" ? opportunity.market.yesAsk : opportunity.market.noAsk,
-      status: "proposed",
-      source: "operator",
-      auditId: `audit-${Date.now()}`,
-      traceId: opportunity.traceId,
-      createdAt: new Date().toISOString()
-    };
+    const order = buildTradeOrder({ ...opportunity, risk }, "live", "operator", draftOrder.auditId);
     const response = await withIdempotency(`live:${opportunity.id}:${approvalToken}`, () =>
       client.createOrder({
         ticker: order.ticker,
@@ -121,6 +131,51 @@ export async function executeLiveTrade(opportunity: Opportunity, approvalToken?:
     );
     return { blocked: false, order: { ...order, status: "live_submitted" as const }, kalshi: response.value };
   });
+}
+
+export function entryPriceForSide(opportunity: Opportunity): number {
+  return opportunity.side === "yes" ? opportunity.market.yesAsk : opportunity.market.noAsk;
+}
+
+export function markPriceForSide(opportunity: Opportunity): number {
+  if (opportunity.market.lastPrice > 0) {
+    return opportunity.side === "yes" ? opportunity.market.lastPrice : Math.max(0, 100 - opportunity.market.lastPrice);
+  }
+  return entryPriceForSide(opportunity);
+}
+
+export function quantityForBudget(budgetDollars: number, limitPriceCents: number): number {
+  const priceDollars = Math.max(0.01, limitPriceCents / 100);
+  return Math.max(1, Math.floor(budgetDollars / priceDollars));
+}
+
+export function orderNotional(order: TradeOrder): number {
+  return Number(((order.limitPrice / 100) * order.quantity).toFixed(2));
+}
+
+export function buildTradeOrder(
+  opportunity: Opportunity,
+  mode: TradingMode,
+  source: TradeOrder["source"],
+  auditId = `audit-${Date.now()}`
+): TradeOrder {
+  const limitPrice = entryPriceForSide(opportunity);
+  return {
+    id: `${mode}-${opportunity.market.ticker}-${Date.now()}`,
+    opportunityId: opportunity.id,
+    ticker: opportunity.market.ticker,
+    sector: opportunity.sector,
+    mode,
+    action: "buy",
+    side: opportunity.side,
+    quantity: quantityForBudget(opportunity.risk.positionSize, limitPrice),
+    limitPrice,
+    status: "proposed",
+    source,
+    auditId,
+    traceId: opportunity.traceId,
+    createdAt: new Date().toISOString()
+  };
 }
 
 function auditEvent(
