@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.eventfund-traces/
+.env
+.env.*
+.DS_Store
