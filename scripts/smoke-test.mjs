@@ -62,7 +62,9 @@ const checks = [
   ["CopilotKit action surface includes operating policy tools", copilotActions.includes("readAgentOperatingPolicy") && copilotActions.includes("applyAgentPolicyPatch")],
   ["portfolio accounting separates settled and unrealized PnL", portfolio.includes("settledPnl") && portfolio.includes("unrealizedPnl")],
   ["agent operating policy file protects live gates", policyConfig.includes("GLOBAL_KILL_SWITCH") && policyConfig.includes("liveTradingEditPolicy")],
-  ["agent operating policy enforces section permissions", operatingPolicy.includes("requiredPermissionForSection") && operatingPolicy.includes("apply_governance_policy")]
+  ["agent operating policy enforces section permissions", operatingPolicy.includes("requiredPermissionForSection") && operatingPolicy.includes("apply_governance_policy")],
+  ["executive roster replaces compliance exec without vacancy", policyConfig.includes("Interim Compliance Officer Agent") && policyConfig.includes("cannotVacateSeats")],
+  ["operating policy validates protected executive seats", operatingPolicy.includes("validateExecutiveRoster") && operatingPolicy.includes("cannot leave required protected seat")]
 ];
 
 for (const [label, ok] of checks) {

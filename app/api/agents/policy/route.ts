@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 const policyActionSchema = z.object({
   action: z.enum(["propose", "apply"]).default("propose"),
   actorRole: z.string().min(1),
-  section: z.enum(["agentPolicies", "fundGovernance", "paperCycle"]),
+  section: z.enum(["agentPolicies", "fundGovernance", "paperCycle", "executiveRoster"]),
   value: z.unknown(),
   reason: z.string().min(8)
 });

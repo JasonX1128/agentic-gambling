@@ -8,5 +8,8 @@ analyst headcount changes, PIP/defense reviews, and sleeping scouts.
 Agent prompts, pod governance, sector rules, analyst allocation, scout cadence,
 and paper-cycle scoring now read from config/agent-operating-policy.json with
 permissioned agent proposal/apply paths and Redis audit requirements.
+The prior compliance executive is removed and replaced by an interim compliance
+officer; compliance remains a protected non-vacant control seat and mandatory
+pre-trade gate.
 Live trading remains disabled by default and gated behind explicit environment flags,
 risk checks, compliance checks, Redis idempotency, and Kalshi credentials.

@@ -13,8 +13,9 @@ describe("agent operating policy", () => {
     const summary = policySummary(policy);
 
     expect(summary.configPath).toContain("config/agent-operating-policy.json");
-    expect(summary.editableSections).toEqual(["agentPolicies", "fundGovernance", "paperCycle"]);
+    expect(summary.editableSections).toEqual(["agentPolicies", "fundGovernance", "paperCycle", "executiveRoster"]);
     expect(summary.protectedKeys).toContain("GLOBAL_KILL_SWITCH");
+    expect(summary.executiveSeatCount).toBeGreaterThanOrEqual(5);
     expect(policy.agentPolicies.length).toBeGreaterThan(5);
   });
 
@@ -78,6 +79,42 @@ describe("agent operating policy", () => {
     expect(requiredPermissionForSection("paperCycle")).toBe("apply_paper_cycle_policy");
     expect(canRole("Calibration Agent", "apply_paper_cycle_policy", policy)).toBe(true);
     expect(evaluation.ok).toBe(true);
+  });
+
+  it("allows executive replacement while blocking vacant protected control seats", () => {
+    const policy = getAgentOperatingPolicy();
+    const complianceSeat = policy.executiveRoster.seats.find((seat) => seat.seat === "compliance");
+    const vacantRoster = {
+      ...policy.executiveRoster,
+      seats: policy.executiveRoster.seats.map((seat) =>
+        seat.seat === "compliance" ? { ...seat, status: "vacant" as const, currentAgentName: "Vacant Compliance Seat" } : seat
+      )
+    };
+
+    const currentRoster = evaluatePolicyChange(
+      {
+        actorRole: "CIO / Senior PM Agent",
+        section: "executiveRoster",
+        value: policy.executiveRoster,
+        reason: "CIO records compliance executive replacement with interim coverage."
+      },
+      "apply",
+      policy
+    );
+    const vacantCompliance = evaluatePolicyChange(
+      {
+        actorRole: "CIO / Senior PM Agent",
+        section: "executiveRoster",
+        value: vacantRoster,
+        reason: "Attempt to leave compliance vacant should fail."
+      },
+      "apply",
+      policy
+    );
+
+    expect(complianceSeat?.currentAgentName).toBe("Interim Compliance Officer Agent");
+    expect(currentRoster.ok).toBe(true);
+    expect(vacantCompliance.ok).toBe(false);
   });
 
   it("rejects malformed section payloads before a file write", () => {

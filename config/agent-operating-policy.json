@@ -49,6 +49,10 @@
         "read_policy",
         "propose_policy_patch"
       ],
+      "Interim Compliance Officer Agent": [
+        "read_policy",
+        "propose_policy_patch"
+      ],
       "Research Director Agent": [
         "read_policy",
         "propose_policy_patch",
@@ -103,6 +107,76 @@
       ]
     }
   },
+  "executiveRoster": {
+    "seats": [
+      {
+        "id": "cio",
+        "seat": "cio",
+        "required": true,
+        "currentAgentName": "CIO / Senior PM Agent",
+        "policyRole": "CIO / Senior PM Agent",
+        "status": "active",
+        "effectiveAt": "2026-06-06T23:30:00.000Z",
+        "lastDecision": "Rank cross-sector opportunities and allocate paper risk budget."
+      },
+      {
+        "id": "cro",
+        "seat": "risk",
+        "required": true,
+        "currentAgentName": "Chief Risk Officer Agent",
+        "policyRole": "Chief Risk Officer Agent",
+        "status": "active",
+        "effectiveAt": "2026-06-06T23:30:00.000Z",
+        "lastDecision": "Negotiate size, entry, liquidity, confidence, and portfolio crowding inside hard rails."
+      },
+      {
+        "id": "cco",
+        "seat": "compliance",
+        "required": true,
+        "currentAgentName": "Interim Compliance Officer Agent",
+        "policyRole": "Compliance Officer Agent",
+        "status": "interim",
+        "predecessorAgentName": "Compliance Officer Agent",
+        "personnelAction": "Removed prior compliance executive; appointed interim officer without weakening compliance controls.",
+        "effectiveAt": "2026-06-06T23:30:00.000Z",
+        "lastDecision": "Interim seat active. Compliance gate remains non-bypassable before every paper or live order."
+      },
+      {
+        "id": "research-director",
+        "seat": "research",
+        "required": true,
+        "currentAgentName": "Research Director Agent",
+        "policyRole": "Research Director Agent",
+        "status": "active",
+        "effectiveAt": "2026-06-06T23:30:00.000Z",
+        "lastDecision": "Scout new sectors, challenge duplicated exposure, and recommend pod openings or closures."
+      },
+      {
+        "id": "execution-supervisor",
+        "seat": "execution",
+        "required": true,
+        "currentAgentName": "Execution Supervisor Agent",
+        "policyRole": "Execution Supervisor Agent",
+        "status": "active",
+        "effectiveAt": "2026-06-06T23:30:00.000Z",
+        "lastDecision": "Route paper fills only after risk and compliance approval; refuse live orders without explicit gates."
+      }
+    ],
+    "personnelRules": {
+      "replacementRequiredForRequiredSeats": true,
+      "cannotVacateSeats": [
+        "compliance",
+        "risk",
+        "execution"
+      ],
+      "protectedControlFunctions": [
+        "compliance",
+        "risk",
+        "live_trading_gate",
+        "kill_switch"
+      ]
+    }
+  },
   "agentPolicies": [
     {
       "role": "CIO / Senior PM Agent",
@@ -134,6 +208,17 @@
         "Require public settlement rules"
       ],
       "systemPrompt": "You are compliance. Allow only public-information theses with clear Kalshi rules and legitimate order intent. Block private, leaked, manipulative, or unsupported claims regardless of expected value."
+    },
+    {
+      "role": "Interim Compliance Officer Agent",
+      "operatingMode": "approve",
+      "decisionRights": [
+        "Block non-public information",
+        "Block manipulation",
+        "Require public settlement rules",
+        "Audit predecessor policy decisions"
+      ],
+      "systemPrompt": "You are interim compliance. You replaced the removed compliance executive, but the compliance function remains mandatory. Allow only public-information theses with clear Kalshi rules and legitimate order intent. Block private, leaked, manipulative, or unsupported claims regardless of expected value."
     },
     {
       "role": "Research Director Agent",

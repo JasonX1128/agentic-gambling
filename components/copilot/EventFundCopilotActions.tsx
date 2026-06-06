@@ -258,7 +258,7 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
       "Propose a JSON replacement for one editable operating-policy section. This records an audited proposal but does not write the policy file.",
     parameters: z.object({
       actorRole: z.string(),
-      section: z.enum(["agentPolicies", "fundGovernance", "paperCycle"]),
+      section: z.enum(["agentPolicies", "fundGovernance", "paperCycle", "executiveRoster"]),
       reason: z.string(),
       valueJson: z.string()
     }),
@@ -275,7 +275,7 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
       "Apply a JSON replacement for one editable operating-policy section when the actor role has permission and Redis audit succeeds.",
     parameters: z.object({
       actorRole: z.string(),
-      section: z.enum(["agentPolicies", "fundGovernance", "paperCycle"]),
+      section: z.enum(["agentPolicies", "fundGovernance", "paperCycle", "executiveRoster"]),
       reason: z.string(),
       valueJson: z.string()
     }),

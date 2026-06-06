@@ -46,6 +46,8 @@ Policy mutation has permission levels:
 - Policy writes require Redis auditability; if Redis is down, the write is blocked.
 - Agents cannot edit live-trading environment flags, Kalshi/W&B/Copilot secrets, global kill switch state, permissions, or hard compliance prohibitions.
 
+Executive roster changes are allowed only as covered replacements. The current policy records the prior `Compliance Officer Agent` as removed and appoints `Interim Compliance Officer Agent`. That does not remove compliance review: the compliance seat is protected, cannot be left vacant, and the server-side compliance engine still blocks trades before execution.
+
 ## Compliance Blocks
 
 The Compliance Officer blocks trades involving:

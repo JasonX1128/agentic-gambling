@@ -403,6 +403,7 @@ export type AgentOperatingPolicySummary = {
   liveTradingEditPolicy: string;
   permissionedRoles: number;
   agentPolicyCount: number;
+  executiveSeatCount: number;
   sectorRuleCount: number;
   paperCycleScoring: Record<string, number>;
 };

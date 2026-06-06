@@ -14,6 +14,7 @@ This repo was created as a greenfield implementation in an empty workspace.
 - Multi-agent trading hierarchy: CIO, CRO, compliance, research director, execution supervisor, and dynamic sector pods.
 - Dynamic pod governance: research scouts propose new pods, pods resize analyst headcount, losing pods move to PIP/defense, and idle scouts sleep until new markets appear.
 - File-backed agent operating policy at `config/agent-operating-policy.json` for prompts, role rights, sector rules, pod lifecycle thresholds, analyst allocation, scout sleep cadence, proposal thresholds, and paper-cycle scoring.
+- Executive roster governance: required seats can be replaced, but protected control functions such as compliance, risk, and execution cannot be left vacant.
 - Quant scoring: market-implied probability, fair probability, EV, confidence, liquidity quality, capped Kelly sizing, Brier/calibration helpers.
 - Paper trading engine that updates Redis-backed portfolio state.
 - CIO-driven paper cycle endpoint that ranks opportunities, enqueues Redis Stream tasks, writes audit events, and executes the approved paper slate.
@@ -184,6 +185,7 @@ Agent operating policy:
 - Agents can read, propose, or apply permitted sections through CopilotKit tools and `GET/POST /api/agents/policy`.
 - All policy proposals and applies require Redis auditability. If Redis is down, policy mutation is blocked.
 - Protected safety surfaces are intentionally not agent-editable: live-trading environment flags, Kalshi/W&B/Copilot secrets, global kill switch state, permissions, and hard compliance prohibitions.
+- The prior `Compliance Officer Agent` has been replaced by `Interim Compliance Officer Agent` in the executive roster. This is a personnel change only; compliance checks remain mandatory before every paper or live order.
 
 ## Key Endpoints
 

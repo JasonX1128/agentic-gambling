@@ -10,7 +10,7 @@ export type PolicyPermission =
   | "apply_governance_policy"
   | "apply_paper_cycle_policy";
 
-export type EditablePolicySection = "agentPolicies" | "fundGovernance" | "paperCycle";
+export type EditablePolicySection = "agentPolicies" | "fundGovernance" | "paperCycle" | "executiveRoster";
 
 const operatingModeSchema = z.enum(["discover", "debate", "negotiate", "approve", "execute", "monitor"]);
 
@@ -154,6 +154,28 @@ const paperCycleSchema = z.object({
   })
 });
 
+const executiveSeatSchema = z.object({
+  id: z.string().min(1),
+  seat: z.string().min(1),
+  required: z.boolean(),
+  currentAgentName: z.string().min(1),
+  policyRole: z.string().min(1),
+  status: z.enum(["active", "interim", "vacant"]),
+  predecessorAgentName: z.string().optional(),
+  personnelAction: z.string().optional(),
+  effectiveAt: z.string().min(1),
+  lastDecision: z.string().min(1)
+});
+
+const executiveRosterSchema = z.object({
+  seats: z.array(executiveSeatSchema).min(1),
+  personnelRules: z.object({
+    replacementRequiredForRequiredSeats: z.boolean(),
+    cannotVacateSeats: z.array(z.string().min(1)),
+    protectedControlFunctions: z.array(z.string().min(1))
+  })
+});
+
 export const agentOperatingPolicySchema = z.object({
   version: z.string().min(1),
   updatedAt: z.string().min(1),
@@ -173,6 +195,7 @@ export const agentOperatingPolicySchema = z.object({
     ])))
   }),
   agentPolicies: z.array(agentPolicySchema).min(1),
+  executiveRoster: executiveRosterSchema,
   fundGovernance: fundGovernanceSchema,
   paperCycle: paperCycleSchema
 });
@@ -181,6 +204,7 @@ export type AgentPolicy = z.infer<typeof agentPolicySchema>;
 export type AgentOperatingPolicy = z.infer<typeof agentOperatingPolicySchema>;
 export type FundGovernancePolicy = AgentOperatingPolicy["fundGovernance"];
 export type PaperCyclePolicy = AgentOperatingPolicy["paperCycle"];
+export type ExecutiveRosterPolicy = AgentOperatingPolicy["executiveRoster"];
 
 export type PolicyChangeRequest = {
   actorRole: string;
@@ -201,7 +225,7 @@ export type PolicyEvaluation =
       errors: string[];
     };
 
-const editableSections: EditablePolicySection[] = ["agentPolicies", "fundGovernance", "paperCycle"];
+const editableSections: EditablePolicySection[] = ["agentPolicies", "fundGovernance", "paperCycle", "executiveRoster"];
 const policyPath = path.join(process.cwd(), "config", "agent-operating-policy.json");
 
 const fallbackPolicy: AgentOperatingPolicy = {
@@ -230,8 +254,76 @@ const fallbackPolicy: AgentOperatingPolicy = {
       decisionRights: ["Rank cross-sector opportunities", "Allocate paper risk budget", "Send approved slate to execution"],
       systemPrompt:
         "You are the fund CIO. Maximize risk-adjusted paper PnL through many small, observable experiments. Never override Risk or Compliance hard stops."
+    },
+    {
+      role: "Interim Compliance Officer Agent",
+      operatingMode: "approve",
+      decisionRights: ["Block non-public information", "Block manipulation", "Require public settlement rules"],
+      systemPrompt:
+        "You are interim compliance. You replaced the removed compliance executive, but the compliance function remains mandatory. Allow only public-information theses with clear Kalshi rules and legitimate order intent."
     }
   ],
+  executiveRoster: {
+    seats: [
+      {
+        id: "cio",
+        seat: "cio",
+        required: true,
+        currentAgentName: "CIO / Senior PM Agent",
+        policyRole: "CIO / Senior PM Agent",
+        status: "active",
+        effectiveAt: new Date(0).toISOString(),
+        lastDecision: "Rank opportunities and allocate paper risk budget."
+      },
+      {
+        id: "cro",
+        seat: "risk",
+        required: true,
+        currentAgentName: "Chief Risk Officer Agent",
+        policyRole: "Chief Risk Officer Agent",
+        status: "active",
+        effectiveAt: new Date(0).toISOString(),
+        lastDecision: "Negotiate risk inside hard rails."
+      },
+      {
+        id: "cco",
+        seat: "compliance",
+        required: true,
+        currentAgentName: "Interim Compliance Officer Agent",
+        policyRole: "Compliance Officer Agent",
+        status: "interim",
+        predecessorAgentName: "Compliance Officer Agent",
+        personnelAction: "Removed prior compliance executive; appointed interim officer without weakening compliance controls.",
+        effectiveAt: new Date(0).toISOString(),
+        lastDecision: "Interim seat active. Compliance gate remains non-bypassable before every paper or live order."
+      },
+      {
+        id: "research-director",
+        seat: "research",
+        required: true,
+        currentAgentName: "Research Director Agent",
+        policyRole: "Research Director Agent",
+        status: "active",
+        effectiveAt: new Date(0).toISOString(),
+        lastDecision: "Scout sectors and challenge duplicated exposure."
+      },
+      {
+        id: "execution-supervisor",
+        seat: "execution",
+        required: true,
+        currentAgentName: "Execution Supervisor Agent",
+        policyRole: "Execution Supervisor Agent",
+        status: "active",
+        effectiveAt: new Date(0).toISOString(),
+        lastDecision: "Route paper fills only after risk and compliance approval."
+      }
+    ],
+    personnelRules: {
+      replacementRequiredForRequiredSeats: true,
+      cannotVacateSeats: ["compliance", "risk", "execution"],
+      protectedControlFunctions: ["compliance", "risk", "live_trading_gate", "kill_switch"]
+    }
+  },
   fundGovernance: {
     analystRoles: ["Data Analyst", "News Analyst", "Rules Analyst", "Market Microstructure Analyst", "Contrarian Agent", "Calibration Agent"],
     sectorClassificationRules: [],
@@ -374,6 +466,10 @@ export function getPaperCyclePolicy(): PaperCyclePolicy {
   return getAgentOperatingPolicy().paperCycle;
 }
 
+export function getExecutiveRosterPolicy(): ExecutiveRosterPolicy {
+  return getAgentOperatingPolicy().executiveRoster;
+}
+
 export function getPolicyPath(): string {
   return policyPath;
 }
@@ -424,6 +520,10 @@ export function evaluatePolicyChange(
       errors: parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`)
     };
   }
+  const rosterErrors = validateExecutiveRoster(parsed.data);
+  if (rosterErrors.length) {
+    return { ok: false, requiredPermission: permission, errors: rosterErrors };
+  }
   return { ok: true, requiredPermission: permission, nextPolicy: parsed.data };
 }
 
@@ -447,9 +547,20 @@ export function policySummary(policy = getAgentOperatingPolicy()) {
     liveTradingEditPolicy: policy.safety.liveTradingEditPolicy,
     permissionedRoles: Object.keys(policy.permissions.roles).length,
     agentPolicyCount: policy.agentPolicies.length,
+    executiveSeatCount: policy.executiveRoster.seats.length,
     sectorRuleCount: policy.fundGovernance.sectorClassificationRules.length,
     paperCycleScoring: policy.paperCycle.scoring
   };
+}
+
+export function getExecutiveRosterAgents(policy = getAgentOperatingPolicy()): AgentNode[] {
+  return policy.executiveRoster.seats.map((seat) => ({
+    id: seat.id,
+    name: seat.currentAgentName,
+    role: seat.policyRole,
+    status: seat.status === "vacant" ? "blocked" : "running",
+    lastDecision: seat.personnelAction ? `${seat.personnelAction} ${seat.lastDecision}` : seat.lastDecision
+  }));
 }
 
 export function policyForAgentNode(agent: AgentNode): AgentPolicy {
@@ -471,4 +582,21 @@ export function fallbackAgentPolicy(role: string): AgentPolicy {
 
 export function actionsForLifecycle(status: PodLifecycleStatus, policy = getFundGovernancePolicy()): string[] {
   return policy.mandateActions[status] ?? policy.mandateActions.active;
+}
+
+function validateExecutiveRoster(policy: AgentOperatingPolicy): string[] {
+  const { seats, personnelRules } = policy.executiveRoster;
+  const seatByName = new Map(seats.map((seat) => [seat.seat, seat]));
+  const errors: string[] = [];
+  for (const protectedSeat of personnelRules.cannotVacateSeats) {
+    const seat = seatByName.get(protectedSeat);
+    if (!seat) {
+      errors.push(`executiveRoster missing protected seat ${protectedSeat}.`);
+      continue;
+    }
+    if (personnelRules.replacementRequiredForRequiredSeats && seat.required && seat.status === "vacant") {
+      errors.push(`executiveRoster cannot leave required protected seat ${protectedSeat} vacant.`);
+    }
+  }
+  return errors;
 }

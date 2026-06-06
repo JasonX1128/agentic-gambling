@@ -4,6 +4,7 @@ import { evaluateCompliance } from "@/lib/compliance/engine";
 import { evaluateRisk } from "@/lib/risk/engine";
 import { getRiskLimits } from "@/lib/config/env";
 import { hydrateAgentPolicy } from "@/lib/agents/policy";
+import { getExecutiveRosterAgents } from "@/lib/agents/operating-policy";
 
 const now = "2026-06-06T18:45:00.000Z";
 
@@ -98,45 +99,7 @@ export const demoMarkets: Market[] = [
   }
 ];
 
-const baseAgentHierarchy: AgentNode[] = [
-  {
-    id: "cio",
-    name: "CIO / Senior PM Agent",
-    role: "Allocates capital across sector pods and approves trade recommendations.",
-    status: "running",
-    lastDecision: "Prioritize positive EV macro markets with sufficient liquidity."
-  },
-  {
-    id: "cro",
-    name: "Chief Risk Officer Agent",
-    role: "Monitors drawdown, exposure, liquidity, and correlated events.",
-    status: "running",
-    lastDecision: "Politics exposure remains capped until evidence quality improves."
-  },
-  {
-    id: "cco",
-    name: "Compliance Officer Agent",
-    role: "Blocks non-public information, unsupported claims, and ambiguous rules.",
-    status: "running",
-    lastDecision: "Requires public settlement-source citation for every thesis."
-  },
-  {
-    id: "research-director",
-    name: "Research Director Agent",
-    role: "Searches for cross-sector conflicts and duplicated exposure.",
-    status: "running",
-    lastDecision: "Macro CPI and Fed-cut trades share inflation path exposure."
-  },
-  {
-    id: "execution-supervisor",
-    name: "Execution Supervisor Agent",
-    role: "Routes approved orders to paper engine or gated live Kalshi adapter.",
-    status: "idle",
-    lastDecision: "Paper fills only until live prerequisites are complete."
-  }
-];
-
-export const agentHierarchy: AgentNode[] = baseAgentHierarchy.map(hydrateAgentPolicy);
+export const agentHierarchy: AgentNode[] = getExecutiveRosterAgents().map(hydrateAgentPolicy);
 
 export function buildSectorPods(markets: Market[] = demoMarkets, opportunities?: Opportunity[]): SectorPod[] {
   const sectors = Array.from(new Set(markets.map((market) => market.sector)));
