@@ -38,6 +38,7 @@ for (const file of requiredFiles) {
 
 const execution = fs.readFileSync("lib/execution/engine.ts", "utf8");
 const config = fs.readFileSync("lib/config/env.ts", "utf8");
+const nextConfig = fs.readFileSync("next.config.mjs", "utf8");
 const copilotRoute = fs.readFileSync("app/api/copilotkit/[[...slug]]/route.ts", "utf8");
 const copilotActions = fs.readFileSync("components/copilot/EventFundCopilotActions.tsx", "utf8");
 const portfolio = fs.readFileSync("lib/portfolio/engine.ts", "utf8");
@@ -71,7 +72,8 @@ const checks = [
   ["agent operating policy enforces section permissions", operatingPolicy.includes("requiredPermissionForSection") && operatingPolicy.includes("apply_governance_policy")],
   ["executive roster replaces compliance exec without vacancy", policyConfig.includes("Interim Compliance Officer Agent") && policyConfig.includes("cannotVacateSeats")],
   ["operating policy validates protected executive seats", operatingPolicy.includes("validateExecutiveRoster") && operatingPolicy.includes("cannot leave required protected seat")],
-  ["cloud Dockerfile uses Next standalone runtime", dockerfile.includes(".next/standalone") && dockerfile.includes("server.js")],
+  ["Next standalone output is cloud-flag controlled", nextConfig.includes("EVENTFUND_DEPLOY_TARGET") && nextConfig.includes("output: \"standalone\"")],
+  ["cloud Dockerfile uses flagged Next standalone runtime", dockerfile.includes("EVENTFUND_DEPLOY_TARGET=cloud") && dockerfile.includes("build:cloud") && dockerfile.includes(".next/standalone") && dockerfile.includes("server.js")],
   ["cloud health endpoint reports integration readiness", healthRoute.includes("readiness") && healthRoute.includes("redisHealth") && healthRoute.includes("copilotKitHealth")]
 ];
 

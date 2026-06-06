@@ -17,6 +17,9 @@ function provider() {
 if ((env.EVENTFUND_ENV || "dev") === "dev") {
   warnings.push("EVENTFUND_ENV is dev; set EVENTFUND_ENV=production for cloud.");
 }
+if ((env.EVENTFUND_DEPLOY_TARGET || "local") !== "cloud") {
+  warnings.push("EVENTFUND_DEPLOY_TARGET is not cloud; set EVENTFUND_DEPLOY_TARGET=cloud for standalone container builds.");
+}
 
 if (env.TRADING_MODE === "live") {
   if (!isTruthy(env.ENABLE_LIVE_TRADING)) blockers.push("ENABLE_LIVE_TRADING=true for live mode");
@@ -55,6 +58,7 @@ if (provider() === "ollama") {
 console.log("EventFund OS cloud preflight");
 console.log(`Trading mode: ${env.TRADING_MODE || "paper"}`);
 console.log(`EventFund env: ${env.EVENTFUND_ENV || "dev"}`);
+console.log(`Deploy target: ${env.EVENTFUND_DEPLOY_TARGET || "local"}`);
 console.log(`CopilotKit model provider: ${provider()}`);
 console.log(`Redis configured: ${Boolean(env.REDIS_URL)}`);
 console.log(`Kalshi configured: ${Boolean(env.KALSHI_API_KEY && (env.KALSHI_PRIVATE_KEY || env.KALSHI_PRIVATE_KEY_PATH || env.KALSHI_API_SECRET))}`);

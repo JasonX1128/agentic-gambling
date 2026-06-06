@@ -44,8 +44,14 @@ This repo now includes a Docker-first cloud deployment path. Use `Dockerfile` fo
 ```bash
 cp .env.cloud.example .env.production
 npm run cloud:preflight
-docker build -t eventfund-os .
+npm run build:cloud
+npm run docker:build
 ```
+
+Build modes:
+
+- Local default: `npm run dev` or `npm run build:local`
+- Cloud standalone: `EVENTFUND_DEPLOY_TARGET=cloud npm run build` or `npm run build:cloud`
 
 Cloud health endpoint:
 

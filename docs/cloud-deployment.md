@@ -14,6 +14,8 @@ Use Railway, Render, Fly, or AWS ECS with the included `Dockerfile`. Railway is 
 - `.env.cloud.example`: production paper-trading environment template.
 - `npm run cloud:preflight`: checks cloud env readiness before launch.
 
+The Next.js standalone output is controlled by `EVENTFUND_DEPLOY_TARGET=cloud`. Local development and local builds omit that flag and use normal Next output.
+
 ## Required Cloud Services
 
 - App container running EventFund OS.
@@ -33,6 +35,7 @@ The free Ollama path is possible in cloud, but it is not the same as local lapto
 3. Attach managed Redis and set `REDIS_URL`.
 4. Add all variables from `.env.cloud.example`.
 5. Keep:
+   - `EVENTFUND_DEPLOY_TARGET=cloud`
    - `TRADING_MODE=paper`
    - `ENABLE_LIVE_TRADING=false`
    - `GLOBAL_KILL_SWITCH=false`
@@ -41,6 +44,13 @@ The free Ollama path is possible in cloud, but it is not the same as local lapto
 
 ```bash
 npm run cloud:preflight
+```
+
+For local verification without the cloud target:
+
+```bash
+npm run dev
+npm run build:local
 ```
 
 7. Deploy.

@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:local": "EVENTFUND_DEPLOY_TARGET=local next build",
+    "build:cloud": "EVENTFUND_DEPLOY_TARGET=cloud next build",
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
