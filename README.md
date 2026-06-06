@@ -37,6 +37,24 @@ If Redis is not running, the UI still explains status, but paper execution and r
 
 Recommended Node runtime: Node `20.19+` or `22.13+`. The app verified locally on Node `20.17.0`, but npm reports an engine warning from a transitive ESLint package.
 
+## Move To Cloud
+
+This repo now includes a Docker-first cloud deployment path. Use `Dockerfile` for Railway, Render, Fly, or AWS ECS. Railway also has a starter `railway.toml`.
+
+```bash
+cp .env.cloud.example .env.production
+npm run cloud:preflight
+docker build -t eventfund-os .
+```
+
+Cloud health endpoint:
+
+```bash
+curl https://YOUR_APP_URL/api/health
+```
+
+See `docs/cloud-deployment.md`. Actual deployment is blocked until cloud account access, managed `REDIS_URL`, Kalshi credentials, W&B/Weave credentials, and a reachable CopilotKit model backend are available in the cloud secret store.
+
 ## Verification
 
 ```bash

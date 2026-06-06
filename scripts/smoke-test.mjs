@@ -13,6 +13,7 @@ const requiredFiles = [
   "app/api/agents/paper-cycle/route.ts",
   "app/api/agents/governance/route.ts",
   "app/api/agents/policy/route.ts",
+  "app/api/health/route.ts",
   "app/api/portfolio/mark-to-market/route.ts",
   "app/api/trades/[id]/close/route.ts",
   "app/api/trades/[id]/settle/route.ts",
@@ -20,6 +21,9 @@ const requiredFiles = [
   "lib/risk/engine.ts",
   "lib/compliance/engine.ts",
   "lib/execution/engine.ts",
+  "Dockerfile",
+  ".env.cloud.example",
+  "scripts/cloud-preflight.mjs",
   "README.md",
   "docs/integration-status.md"
 ];
@@ -39,6 +43,8 @@ const copilotActions = fs.readFileSync("components/copilot/EventFundCopilotActio
 const portfolio = fs.readFileSync("lib/portfolio/engine.ts", "utf8");
 const operatingPolicy = fs.readFileSync("lib/agents/operating-policy.ts", "utf8");
 const policyConfig = fs.readFileSync("config/agent-operating-policy.json", "utf8");
+const dockerfile = fs.readFileSync("Dockerfile", "utf8");
+const healthRoute = fs.readFileSync("app/api/health/route.ts", "utf8");
 const approveStart = execution.indexOf("export async function approvePaperTrade");
 const liveStart = execution.indexOf("export async function executeLiveTrade");
 const approveBlock = execution.slice(approveStart, liveStart);
@@ -64,7 +70,9 @@ const checks = [
   ["agent operating policy file protects live gates", policyConfig.includes("GLOBAL_KILL_SWITCH") && policyConfig.includes("liveTradingEditPolicy")],
   ["agent operating policy enforces section permissions", operatingPolicy.includes("requiredPermissionForSection") && operatingPolicy.includes("apply_governance_policy")],
   ["executive roster replaces compliance exec without vacancy", policyConfig.includes("Interim Compliance Officer Agent") && policyConfig.includes("cannotVacateSeats")],
-  ["operating policy validates protected executive seats", operatingPolicy.includes("validateExecutiveRoster") && operatingPolicy.includes("cannot leave required protected seat")]
+  ["operating policy validates protected executive seats", operatingPolicy.includes("validateExecutiveRoster") && operatingPolicy.includes("cannot leave required protected seat")],
+  ["cloud Dockerfile uses Next standalone runtime", dockerfile.includes(".next/standalone") && dockerfile.includes("server.js")],
+  ["cloud health endpoint reports integration readiness", healthRoute.includes("readiness") && healthRoute.includes("redisHealth") && healthRoute.includes("copilotKitHealth")]
 ];
 
 for (const [label, ok] of checks) {

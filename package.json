@@ -12,6 +12,8 @@
     "test": "vitest run",
     "smoke": "node scripts/smoke-test.mjs",
     "check:env": "node scripts/check-env.mjs",
+    "cloud:preflight": "node scripts/cloud-preflight.mjs",
+    "docker:build": "docker build -t eventfund-os .",
     "qa": "npm run typecheck && npm run test && npm run smoke"
   },
   "dependencies": {
