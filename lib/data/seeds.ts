@@ -322,6 +322,9 @@ export const demoPortfolio: PortfolioSnapshot = {
   weeklyPnl: 55,
   realizedPnl: 0,
   unrealizedPnl: 55,
+  totalPnl: 55,
+  closedPnl: 0,
+  settledPnl: 0,
   openExposure: 350,
   sectorExposure: {
     macro: 250,
@@ -353,6 +356,14 @@ export const demoPortfolio: PortfolioSnapshot = {
     }
   ],
   orders: [],
+  settlements: [],
+  calibration: {
+    settledTrades: 0,
+    brierScore: 0,
+    winRate: 0,
+    byBucket: [],
+    updatedAt: now
+  },
   updatedAt: now
 };
 

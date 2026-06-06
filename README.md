@@ -15,6 +15,7 @@ This repo was created as a greenfield implementation in an empty workspace.
 - Quant scoring: market-implied probability, fair probability, EV, confidence, liquidity quality, capped Kelly sizing, Brier/calibration helpers.
 - Paper trading engine that updates Redis-backed portfolio state.
 - CIO-driven paper cycle endpoint that ranks opportunities, enqueues Redis Stream tasks, writes audit events, and executes the approved paper slate.
+- Paper close, settlement, mark-to-market, realized/unrealized/settled PnL, and Brier/calibration accounting.
 - Live order path present but blocked unless every live prerequisite is satisfied.
 - Risk/compliance engines that block unsafe trades server-side.
 
@@ -141,6 +142,32 @@ Run one agent-selected paper cycle:
 curl -X POST http://localhost:3000/api/agents/paper-cycle
 ```
 
+Refresh paper marks from current Kalshi market data:
+
+```bash
+curl -X POST http://localhost:3000/api/portfolio/mark-to-market
+```
+
+Close or settle a paper position:
+
+```bash
+curl -X POST http://localhost:3000/api/trades/KXEXAMPLE/close \
+  -H 'content-type: application/json' \
+  -d '{"exitPrice":55,"reason":"risk taking profit"}'
+
+curl -X POST http://localhost:3000/api/trades/KXEXAMPLE/settle \
+  -H 'content-type: application/json' \
+  -d '{"outcome":"yes","notes":"Kalshi settlement source resolved yes"}'
+```
+
+PnL semantics:
+
+- `unrealizedPnl`: open paper mark-to-market PnL.
+- `closedPnl`: realized PnL from explicit paper closes.
+- `settledPnl`: realized PnL from recorded paper outcomes.
+- `realizedPnl`: `closedPnl + settledPnl`.
+- `totalPnl`: `realizedPnl + unrealizedPnl`.
+
 ## Key Endpoints
 
 - `GET /api/integrations`
@@ -148,8 +175,11 @@ curl -X POST http://localhost:3000/api/agents/paper-cycle
 - `GET /api/opportunities`
 - `POST /api/agents/paper-cycle`
 - `POST /api/trades/:id/approve`
+- `POST /api/trades/:ticker/close`
+- `POST /api/trades/:ticker/settle`
 - `POST /api/trades/:id/execute`
 - `GET /api/portfolio`
+- `POST /api/portfolio/mark-to-market`
 - `GET /api/audit`
 - `POST /api/risk/live-trading-gate`
 - `POST /api/memos/cio`

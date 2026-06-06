@@ -3,6 +3,7 @@ export type IntegrationState = "complete" | "blocked" | "degraded";
 export type OrderSide = "yes" | "no";
 export type OrderAction = "buy" | "sell";
 export type TradeSource = "agent" | "copilot" | "operator" | "demo";
+export type SettlementOutcome = "yes" | "no";
 
 export type IntegrationStatus = {
   name: "Kalshi" | "Redis" | "Weave" | "CopilotKit";
@@ -177,12 +178,28 @@ export type TradeOrder = {
   side: OrderSide;
   quantity: number;
   limitPrice: number;
-  status: "proposed" | "blocked" | "paper_filled" | "live_submitted" | "rejected" | "cancelled";
+  status:
+    | "proposed"
+    | "blocked"
+    | "paper_filled"
+    | "paper_closed"
+    | "paper_settled"
+    | "live_submitted"
+    | "rejected"
+    | "cancelled";
   source: TradeSource;
   auditId: string;
   traceId?: string;
   createdAt: string;
   filledAt?: string;
+  closedAt?: string;
+  settledAt?: string;
+  realizedPnl?: number;
+  forecastProbability?: number;
+  marketProbability?: number;
+  expectedValue?: number;
+  confidence?: number;
+  calibrationBucket?: string;
   rejectionReason?: string;
 };
 
@@ -198,6 +215,40 @@ export type Position = {
   mode: TradingMode;
 };
 
+export type SettlementRecord = {
+  id: string;
+  ticker: string;
+  sector: string;
+  side: OrderSide;
+  outcome: SettlementOutcome;
+  quantity: number;
+  entryPrice: number;
+  settlementPrice: number;
+  realizedPnl: number;
+  forecastProbability?: number;
+  marketProbability?: number;
+  expectedValue?: number;
+  confidence?: number;
+  calibrationBucket?: string;
+  brierScore?: number;
+  notes?: string;
+  settledAt: string;
+  source: TradeSource;
+};
+
+export type CalibrationSummary = {
+  settledTrades: number;
+  brierScore: number;
+  winRate: number;
+  byBucket: Array<{
+    bucket: string;
+    count: number;
+    brierScore: number;
+    winRate: number;
+  }>;
+  updatedAt: string;
+};
+
 export type PortfolioSnapshot = {
   mode: TradingMode;
   cash: number;
@@ -207,10 +258,15 @@ export type PortfolioSnapshot = {
   weeklyPnl: number;
   realizedPnl: number;
   unrealizedPnl: number;
+  totalPnl: number;
+  closedPnl: number;
+  settledPnl: number;
   openExposure: number;
   sectorExposure: Record<string, number>;
   positions: Position[];
   orders: TradeOrder[];
+  settlements: SettlementRecord[];
+  calibration: CalibrationSummary;
   updatedAt: string;
 };
 

@@ -1,5 +1,7 @@
 launch ready
 
 EventFund OS is ready for remote Codex handoff and paper-trading launch iteration.
+Paper lifecycle accounting now includes mark refresh, close, settlement,
+realized/unrealized/settled PnL, and Brier/calibration records.
 Live trading remains disabled by default and gated behind explicit environment flags,
 risk checks, compliance checks, Redis idempotency, and Kalshi credentials.

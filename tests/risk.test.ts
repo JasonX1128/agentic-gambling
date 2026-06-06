@@ -98,10 +98,21 @@ describe("risk engine", () => {
           weeklyPnl: -1000,
           realizedPnl: 0,
           unrealizedPnl: 0,
+          totalPnl: 0,
+          closedPnl: 0,
+          settledPnl: 0,
           openExposure: 0,
           sectorExposure: {},
           positions: [],
           orders: [],
+          settlements: [],
+          calibration: {
+            settledTrades: 0,
+            brierScore: 0,
+            winRate: 0,
+            byBucket: [],
+            updatedAt: "2026-06-06T18:45:00.000Z"
+          },
           updatedAt: "2026-06-06T18:45:00.000Z"
         }
       },
@@ -112,7 +123,7 @@ describe("risk engine", () => {
     expect(decision.counterOffer.accepted).toBe(false);
   });
 
-  it("blocks reversing an existing market side until a close workflow exists", () => {
+  it("blocks reversing an existing market side until the existing position is closed", () => {
     const market = demoMarkets[0];
     const decision = evaluateRisk(
       {
@@ -128,6 +139,9 @@ describe("risk engine", () => {
           weeklyPnl: 0,
           realizedPnl: 0,
           unrealizedPnl: 0,
+          totalPnl: 0,
+          closedPnl: 0,
+          settledPnl: 0,
           openExposure: 0,
           sectorExposure: {},
           positions: [
@@ -144,6 +158,14 @@ describe("risk engine", () => {
             }
           ],
           orders: [],
+          settlements: [],
+          calibration: {
+            settledTrades: 0,
+            brierScore: 0,
+            winRate: 0,
+            byBucket: [],
+            updatedAt: "2026-06-06T18:45:00.000Z"
+          },
           updatedAt: "2026-06-06T18:45:00.000Z"
         }
       },

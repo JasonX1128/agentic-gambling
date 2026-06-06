@@ -112,8 +112,8 @@ export function evaluateRisk(input: RiskInput, limits: RiskLimits): RiskDecision
   }
   if (hasOppositePosition) {
     hardBlockedBy.push("OPPOSITE_POSITION");
-    reasons.push("Portfolio already holds the opposite side in this market; close/flip workflow is required before adding exposure.");
-    analystRequiredActions.push("Execution Supervisor Agent must implement close/replace before the Sector PM can reverse the side.");
+    reasons.push("Portfolio already holds the opposite side in this market; close the existing paper position before adding reverse exposure.");
+    analystRequiredActions.push("Execution Supervisor Agent must close or settle the existing paper position before the Sector PM can reverse the side.");
   }
   if (Math.abs(dailyLoss) >= limits.maxDailyLoss) {
     hardBlockedBy.push("MAX_DAILY_LOSS");

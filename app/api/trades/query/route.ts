@@ -17,5 +17,18 @@ export async function POST(req: NextRequest) {
     if (filters.sector && position.sector !== filters.sector) return false;
     return true;
   });
-  return NextResponse.json({ orders, positions, portfolio });
+  const sectorPnl = positions.reduce<Record<string, { realizedPnl: number; unrealizedPnl: number; totalPnl: number; openExposure: number }>>(
+    (acc, position) => {
+      const row = acc[position.sector] ?? { realizedPnl: 0, unrealizedPnl: 0, totalPnl: 0, openExposure: 0 };
+      const quantity = position.yesContracts + position.noContracts;
+      row.realizedPnl = Number((row.realizedPnl + position.realizedPnl).toFixed(2));
+      row.unrealizedPnl = Number((row.unrealizedPnl + position.unrealizedPnl).toFixed(2));
+      row.totalPnl = Number((row.realizedPnl + row.unrealizedPnl).toFixed(2));
+      row.openExposure = Number((row.openExposure + position.avgCost * quantity).toFixed(2));
+      acc[position.sector] = row;
+      return acc;
+    },
+    {}
+  );
+  return NextResponse.json({ orders, positions, settlements: portfolio.settlements, calibration: portfolio.calibration, sectorPnl, portfolio });
 }

@@ -15,7 +15,7 @@ import {
   WalletCards
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { AgentNode, DemoRun, IntegrationStatus, Opportunity } from "@/lib/domain";
+import type { AgentNode, DemoRun, IntegrationStatus, Opportunity, PortfolioSnapshot } from "@/lib/domain";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { EventFundCopilotActions } from "@/components/copilot/EventFundCopilotActions";
 import { Providers } from "@/app/providers";
@@ -77,11 +77,13 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
             </button>
           </header>
 
-          <div id="ledger-panel" className="scroll-mt-4 grid grid-cols-6 gap-3 border-b border-line bg-panel px-5 py-4">
+          <div id="ledger-panel" className="scroll-mt-4 grid grid-cols-8 gap-3 border-b border-line bg-panel px-5 py-4">
             <Metric label="Net Liq" value={`$${data.portfolio.netLiquidationValue.toLocaleString()}`} />
-            <Metric label="Daily P&L" value={`$${data.portfolio.dailyPnl.toLocaleString()}`} tone={data.portfolio.dailyPnl >= 0 ? "positive" : "negative"} />
+            <Metric label="Total P&L" value={`$${data.portfolio.totalPnl.toLocaleString()}`} tone={data.portfolio.totalPnl >= 0 ? "positive" : "negative"} />
+            <Metric label="Unrealized" value={`$${data.portfolio.unrealizedPnl.toLocaleString()}`} tone={data.portfolio.unrealizedPnl >= 0 ? "positive" : "negative"} />
+            <Metric label="Realized" value={`$${data.portfolio.realizedPnl.toLocaleString()}`} tone={data.portfolio.realizedPnl >= 0 ? "positive" : "negative"} />
+            <Metric label="Settled" value={`$${data.portfolio.settledPnl.toLocaleString()}`} tone={data.portfolio.settledPnl >= 0 ? "positive" : "negative"} />
             <Metric label="Open Exposure" value={`$${data.portfolio.openExposure.toLocaleString()}`} />
-            <Metric label="Available" value={`$${data.portfolio.availableCapital.toLocaleString()}`} />
             <Metric label="Candidates" value={String(approved.length)} />
             <Metric label="Active Pods" value={String(data.pods.length)} />
           </div>
@@ -219,11 +221,77 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
                 ))}
               </div>
             </Panel>
+
+            <Panel title="Portfolio, P&L & Calibration" icon={<WalletCards className="h-4 w-4" />}>
+              <PortfolioPanel portfolio={data.portfolio} />
+            </Panel>
           </div>
         </section>
       </div>
     </main>
     </Providers>
+  );
+}
+
+function PortfolioPanel({ portfolio }: { portfolio: PortfolioSnapshot }) {
+  return (
+    <div className="space-y-3 text-xs">
+      <div className="grid grid-cols-4 gap-2">
+        <Cell label="Open" value={String(portfolio.positions.length)} />
+        <Cell label="Orders" value={String(portfolio.orders.length)} />
+        <Cell label="Settled" value={String(portfolio.settlements.length)} />
+        <Cell label="Brier" value={portfolio.calibration.settledTrades ? portfolio.calibration.brierScore.toFixed(3) : "n/a"} />
+      </div>
+      <div className="overflow-auto">
+        <table className="w-full text-left">
+          <thead className="border-b border-line text-slate-500">
+            <tr>
+              <th className="py-1 pr-2">Ticker</th>
+              <th className="py-1 pr-2">Side</th>
+              <th className="py-1 pr-2">Qty</th>
+              <th className="py-1 pr-2">Avg</th>
+              <th className="py-1 pr-2">Mark</th>
+              <th className="py-1 pr-2">Unrl</th>
+            </tr>
+          </thead>
+          <tbody>
+            {portfolio.positions.slice(0, 8).map((position) => {
+              const side = position.yesContracts > 0 ? "YES" : "NO";
+              const quantity = position.yesContracts + position.noContracts;
+              return (
+                <tr key={position.ticker} className="border-b border-slate-100">
+                  <td className="max-w-[180px] truncate py-1 pr-2 font-mono">{position.ticker}</td>
+                  <td className="py-1 pr-2">{side}</td>
+                  <td className="py-1 pr-2 font-mono">{quantity}</td>
+                  <td className="py-1 pr-2 font-mono">{Math.round(position.avgCost * 100)}c</td>
+                  <td className="py-1 pr-2 font-mono">{Math.round(position.markPrice * 100)}c</td>
+                  <td className={`py-1 pr-2 font-mono ${position.unrealizedPnl >= 0 ? "text-healthy" : "text-danger"}`}>
+                    ${position.unrealizedPnl.toLocaleString()}
+                  </td>
+                </tr>
+              );
+            })}
+            {portfolio.positions.length === 0 ? (
+              <tr>
+                <td className="py-2 text-slate-500" colSpan={6}>No open paper positions.</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+      <div className="border-t border-slate-100 pt-2">
+        <div className="mb-1 font-semibold text-slate-700">Latest settlements</div>
+        {portfolio.settlements.slice(0, 3).map((settlement) => (
+          <div key={settlement.id} className="flex justify-between gap-2 border-b border-slate-100 py-1 last:border-b-0">
+            <span className="truncate font-mono">{settlement.ticker}</span>
+            <span>
+              {settlement.outcome.toUpperCase()} ${settlement.realizedPnl.toLocaleString()}
+            </span>
+          </div>
+        ))}
+        {portfolio.settlements.length === 0 ? <div className="text-slate-500">No settled paper outcomes yet.</div> : null}
+      </div>
+    </div>
   );
 }
 

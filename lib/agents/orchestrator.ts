@@ -1,9 +1,10 @@
 import type { DemoRun, Opportunity } from "@/lib/domain";
 import { agentHierarchy, buildDemoOpportunities, buildSectorPods, demoActivity } from "@/lib/data/seeds";
 import { getMarkets } from "@/lib/services/market-service";
-import { getPortfolioSnapshot } from "@/lib/portfolio/engine";
+import { getPortfolioSnapshot, markPortfolioToMarket } from "@/lib/portfolio/engine";
 import { staticIntegrationStatus } from "@/lib/config/env";
 import { redisHealth } from "@/lib/redis/client";
+import { getAuditEvents } from "@/lib/redis/coordination";
 import { traceAsync } from "@/lib/observability/weave";
 
 export async function getOpportunities(): Promise<Opportunity[]> {
@@ -15,8 +16,9 @@ export async function getOpportunities(): Promise<Opportunity[]> {
 export async function runDemoWorkflow(): Promise<DemoRun> {
   return traceAsync("trade.lifecycle.demo_scan", {}, async () => {
     const marketResult = await getMarkets();
-    const portfolio = await getPortfolioSnapshot();
+    const portfolio = await markPortfolioToMarket(marketResult.markets).catch(() => getPortfolioSnapshot());
     const opportunities = buildDemoOpportunities(marketResult.markets, portfolio);
+    const activity = await getAuditEvents(30).catch(() => demoActivity);
     const redis = await redisHealth();
     const status = staticIntegrationStatus().map((item) => (item.name === "Redis" ? redis : item));
     return {
@@ -26,7 +28,7 @@ export async function runDemoWorkflow(): Promise<DemoRun> {
       markets: marketResult.markets,
       opportunities,
       portfolio,
-      activity: demoActivity,
+      activity: activity.length ? activity : demoActivity,
       fundAgents: agentHierarchy,
       pods: buildSectorPods(marketResult.markets, opportunities),
       integrationStatus: status

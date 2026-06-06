@@ -1,11 +1,12 @@
-import type { ActivityEvent, Opportunity, PortfolioSnapshot, TradeOrder, TradingMode } from "@/lib/domain";
+import type { ActivityEvent, Opportunity, PortfolioSnapshot, SettlementOutcome, TradeOrder, TradingMode } from "@/lib/domain";
 import { getEnv, getRiskLimits, livePrerequisites, boolEnv } from "@/lib/config/env";
-import { applyPaperFill, getPortfolioSnapshot } from "@/lib/portfolio/engine";
+import { applyPaperClose, applyPaperFill, applyPaperSettlement, getPortfolioSnapshot } from "@/lib/portfolio/engine";
 import { appendAuditEvent, requireRedisForTrading, withIdempotency } from "@/lib/redis/coordination";
 import { KalshiClient } from "@/lib/kalshi/client";
 import { evaluateRisk } from "@/lib/risk/engine";
 import { evaluateCompliance } from "@/lib/compliance/engine";
 import { traceAsync } from "@/lib/observability/weave";
+import { calibrationBucket } from "@/lib/quant/scoring";
 
 export type PaperTradeResult = {
   order: TradeOrder;
@@ -133,6 +134,84 @@ export async function executeLiveTrade(opportunity: Opportunity, approvalToken?:
   });
 }
 
+export async function closePaperTrade(input: {
+  ticker: string;
+  exitPrice?: number;
+  quantity?: number;
+  source?: TradeOrder["source"];
+  reason?: string;
+}) {
+  return traceAsync("execution.paper_close", { ticker: input.ticker }, async () => {
+    await requireRedisForTrading();
+    const portfolio = await getPortfolioSnapshot();
+    const position = portfolio.positions.find((item) => item.ticker === input.ticker);
+    if (!position) {
+      return {
+        blocked: true,
+        code: "POSITION_NOT_FOUND",
+        reasons: [`No open paper position found for ${input.ticker}.`]
+      };
+    }
+    const exitPrice = input.exitPrice ?? Math.round(position.markPrice * 100);
+    const result = await applyPaperClose({
+      ticker: input.ticker,
+      exitPrice,
+      quantity: input.quantity,
+      source: input.source ?? "operator",
+      reason: input.reason,
+      auditId: `audit-${Date.now()}`
+    });
+    await appendAuditEvent(
+      auditEvent(
+        "paper_order",
+        "Execution Supervisor Agent",
+        `Paper-closed ${result.order.quantity} ${result.order.side.toUpperCase()} contracts in ${input.ticker} for realized PnL $${result.realizedPnl}.`,
+        result.realizedPnl >= 0 ? "success" : "warning",
+        result.order.auditId,
+        { ticker: input.ticker, realizedPnl: result.realizedPnl, reason: input.reason ?? "operator_close" }
+      )
+    );
+    return { blocked: false, ...result };
+  });
+}
+
+export async function settlePaperTrade(input: {
+  ticker: string;
+  outcome: SettlementOutcome;
+  source?: TradeOrder["source"];
+  notes?: string;
+}) {
+  return traceAsync("execution.paper_settlement", { ticker: input.ticker, outcome: input.outcome }, async () => {
+    await requireRedisForTrading();
+    const result = await applyPaperSettlement({
+      ticker: input.ticker,
+      outcome: input.outcome,
+      source: input.source ?? "operator",
+      notes: input.notes,
+      auditId: `audit-${Date.now()}`
+    });
+    await appendAuditEvent(
+      auditEvent(
+        "postmortem",
+        "Calibration Agent",
+        `Settled ${input.ticker} as ${input.outcome.toUpperCase()}; realized PnL $${result.settlement.realizedPnl}, Brier ${
+          result.settlement.brierScore?.toFixed(4) ?? "n/a"
+        }.`,
+        result.settlement.realizedPnl >= 0 ? "success" : "warning",
+        result.order.auditId,
+        {
+          ticker: input.ticker,
+          outcome: input.outcome,
+          realizedPnl: result.settlement.realizedPnl,
+          brierScore: result.settlement.brierScore,
+          calibrationBucket: result.settlement.calibrationBucket
+        }
+      )
+    );
+    return { blocked: false, ...result };
+  });
+}
+
 export function entryPriceForSide(opportunity: Opportunity): number {
   return opportunity.side === "yes" ? opportunity.market.yesAsk : opportunity.market.noAsk;
 }
@@ -160,6 +239,10 @@ export function buildTradeOrder(
   auditId = `audit-${Date.now()}`
 ): TradeOrder {
   const limitPrice = entryPriceForSide(opportunity);
+  const sideForecastProbability =
+    opportunity.side === "yes" ? opportunity.forecast.fairProbability : 1 - opportunity.forecast.fairProbability;
+  const sideMarketProbability =
+    opportunity.side === "yes" ? opportunity.forecast.marketProbability : 1 - opportunity.forecast.marketProbability;
   return {
     id: `${mode}-${opportunity.market.ticker}-${Date.now()}`,
     opportunityId: opportunity.id,
@@ -174,6 +257,11 @@ export function buildTradeOrder(
     source,
     auditId,
     traceId: opportunity.traceId,
+    forecastProbability: Number(sideForecastProbability.toFixed(4)),
+    marketProbability: Number(sideMarketProbability.toFixed(4)),
+    expectedValue: Math.abs(opportunity.forecast.expectedValue),
+    confidence: opportunity.forecast.confidence,
+    calibrationBucket: calibrationBucket(sideForecastProbability),
     createdAt: new Date().toISOString()
   };
 }
@@ -183,7 +271,8 @@ function auditEvent(
   actor: string,
   message: string,
   severity: ActivityEvent["severity"],
-  id: string
+  id: string,
+  payload?: Record<string, unknown>
 ): ActivityEvent {
   return {
     id,
@@ -191,6 +280,7 @@ function auditEvent(
     actor,
     message,
     severity,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    payload
   };
 }

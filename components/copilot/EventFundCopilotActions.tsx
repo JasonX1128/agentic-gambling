@@ -43,6 +43,14 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
         complianceApproved: opportunity.compliance.approved,
         status: opportunity.status
       })),
+      pnl: {
+        totalPnl: data.portfolio.totalPnl,
+        unrealizedPnl: data.portfolio.unrealizedPnl,
+        realizedPnl: data.portfolio.realizedPnl,
+        closedPnl: data.portfolio.closedPnl,
+        settledPnl: data.portfolio.settledPnl,
+        calibration: data.portfolio.calibration
+      },
       integrations: data.integrationStatus,
       fundAgents: data.fundAgents.map((agent) => ({
         name: agent.name,
@@ -146,12 +154,55 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
 
   useFrontendTool({
     name: "approvePaperTrade",
-    description: "Approve a paper trade. This never sends an order to Kalshi and is still risk/compliance checked.",
+    description:
+      "Execute a paper trade after server-side risk/compliance checks. This never sends an order to Kalshi, but it does mutate the paper portfolio.",
     parameters: z.object({ opportunityId: z.string() }),
     handler: async ({ opportunityId }, { signal }) =>
       apiJson(`/api/trades/${encodeURIComponent(opportunityId)}/approve`, {
         method: "POST",
         body: JSON.stringify({ source: "copilot" })
+      }, signal)
+  });
+
+  useFrontendTool({
+    name: "closePaperPosition",
+    description: "Close an open paper position at an explicit paper exit price, realizing closed PnL.",
+    parameters: z.object({
+      ticker: z.string(),
+      exitPrice: z.number().min(0).max(100).optional(),
+      quantity: z.number().int().positive().optional(),
+      reason: z.string().optional()
+    }),
+    handler: async ({ ticker, ...body }, { signal }) =>
+      apiJson(`/api/trades/${encodeURIComponent(ticker)}/close`, {
+        method: "POST",
+        body: JSON.stringify({ ...body, source: "copilot" })
+      }, signal)
+  });
+
+  useFrontendTool({
+    name: "settlePaperPosition",
+    description: "Record a paper settlement outcome, move the position to settled PnL, and update Brier/calibration metrics.",
+    parameters: z.object({
+      ticker: z.string(),
+      outcome: z.enum(["yes", "no"]),
+      notes: z.string().optional()
+    }),
+    handler: async ({ ticker, ...body }, { signal }) =>
+      apiJson(`/api/trades/${encodeURIComponent(ticker)}/settle`, {
+        method: "POST",
+        body: JSON.stringify({ ...body, source: "copilot" })
+      }, signal)
+  });
+
+  useFrontendTool({
+    name: "refreshPaperMarks",
+    description: "Refresh open paper position marks from current Kalshi market data and recompute unrealized PnL.",
+    parameters: z.object({}),
+    handler: async (_args, { signal }) =>
+      apiJson("/api/portfolio/mark-to-market", {
+        method: "POST",
+        body: JSON.stringify({})
       }, signal)
   });
 
