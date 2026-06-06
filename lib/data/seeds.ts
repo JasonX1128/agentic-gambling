@@ -1,11 +1,4 @@
-import type {
-  ActivityEvent,
-  AgentNode,
-  Market,
-  Opportunity,
-  PortfolioSnapshot,
-  SectorPod
-} from "@/lib/domain";
+import type { ActivityEvent, AgentNode, Market, Opportunity, PodLifecycleStatus, PortfolioSnapshot, SectorPod } from "@/lib/domain";
 import { clamp, computeForecast, marketImpliedProbability } from "@/lib/quant/scoring";
 import { evaluateCompliance } from "@/lib/compliance/engine";
 import { evaluateRisk } from "@/lib/risk/engine";
@@ -188,9 +181,42 @@ export function buildSectorPods(markets: Market[] = demoMarkets, opportunities?:
       agents,
       activeMarkets: sectorMarkets.length,
       blockedTrades,
-      approvedCandidates
+      approvedCandidates,
+      lifecycleStatus: "active",
+      mandate: defaultPodMandate("active", sector, agents.length, sectorMarkets.length, sectorOpportunities.length, approvedCandidates)
     };
   });
+}
+
+function defaultPodMandate(
+  status: PodLifecycleStatus,
+  sector: string,
+  analystCount: number,
+  marketCount: number,
+  opportunityCount: number,
+  approvedOpportunityCount: number
+) {
+  return {
+    status,
+    analystCount,
+    targetAnalystCount: analystCount,
+    marketCount,
+    opportunityCount,
+    approvedOpportunityCount,
+    openExposure: 0,
+    realizedPnl: 0,
+    unrealizedPnl: 0,
+    totalPnl: 0,
+    settledPnl: 0,
+    closedPnl: 0,
+    mandateScore: 50 + approvedOpportunityCount * 5,
+    reviewCadence: "continuous" as const,
+    nextReviewAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+    thesis: `${sector} pod is active under the static seed fallback.`,
+    executiveSummary: `${sector} pod is active under the static seed fallback.`,
+    requiredDefense: [],
+    actions: ["Scan markets", "Defend edge with paper PnL"]
+  };
 }
 
 export function buildDemoOpportunities(markets: Market[] = demoMarkets, portfolio?: PortfolioSnapshot): Opportunity[] {

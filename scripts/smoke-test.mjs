@@ -6,8 +6,10 @@ const requiredFiles = [
   "lib/observability/weave.ts",
   "lib/llm/health.ts",
   "lib/agents/paper-cycle.ts",
+  "lib/agents/fund-management.ts",
   "app/api/copilotkit/[[...slug]]/route.ts",
   "app/api/agents/paper-cycle/route.ts",
+  "app/api/agents/governance/route.ts",
   "app/api/portfolio/mark-to-market/route.ts",
   "app/api/trades/[id]/close/route.ts",
   "app/api/trades/[id]/settle/route.ts",
@@ -51,6 +53,7 @@ const checks = [
   ["CopilotKit action surface includes agent paper cycle", copilotActions.includes("runAgentPaperCycle")],
   ["CopilotKit action surface includes paper close", copilotActions.includes("closePaperPosition")],
   ["CopilotKit action surface includes paper settlement", copilotActions.includes("settlePaperPosition")],
+  ["CopilotKit action surface includes pod governance query", copilotActions.includes("queryPodGovernance")],
   ["portfolio accounting separates settled and unrealized PnL", portfolio.includes("settledPnl") && portfolio.includes("unrealizedPnl")]
 ];
 

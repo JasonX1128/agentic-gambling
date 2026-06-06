@@ -15,7 +15,17 @@ import {
   WalletCards
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { AgentNode, DemoRun, IntegrationStatus, Opportunity, PortfolioSnapshot } from "@/lib/domain";
+import type {
+  AgentNode,
+  DemoRun,
+  ExecutiveReview,
+  IntegrationStatus,
+  Opportunity,
+  PodProposal,
+  PortfolioSnapshot,
+  ResearchScout,
+  SectorPod
+} from "@/lib/domain";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { EventFundCopilotActions } from "@/components/copilot/EventFundCopilotActions";
 import { Providers } from "@/app/providers";
@@ -24,6 +34,8 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
   const data = initialData;
   const blocked = data.opportunities.filter((opportunity) => !opportunity.risk.approved || !opportunity.compliance.approved);
   const approved = data.opportunities.filter((opportunity) => opportunity.risk.approved && opportunity.compliance.approved);
+  const activePods = data.pods.filter((pod) => pod.lifecycleStatus === "active" || pod.lifecycleStatus === "pip" || pod.lifecycleStatus === "defense");
+  const stressedPods = data.pods.filter((pod) => pod.lifecycleStatus === "pip" || pod.lifecycleStatus === "defense");
   const navItems: Array<[string, LucideIcon, string]> = [
     ["Command", SquareActivity, "command-top"],
     ["Markets", BarChart3, "markets-panel"],
@@ -85,7 +97,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
             <Metric label="Settled" value={`$${data.portfolio.settledPnl.toLocaleString()}`} tone={data.portfolio.settledPnl >= 0 ? "positive" : "negative"} />
             <Metric label="Open Exposure" value={`$${data.portfolio.openExposure.toLocaleString()}`} />
             <Metric label="Candidates" value={String(approved.length)} />
-            <Metric label="Active Pods" value={String(data.pods.length)} />
+            <Metric label="Pods/PIP" value={`${activePods.length}/${stressedPods.length}`} tone={stressedPods.length ? "negative" : undefined} />
           </div>
 
           <div className="grid min-h-0 flex-1 grid-cols-[1.25fr_1.15fr_0.85fr] gap-4 p-5">
@@ -185,27 +197,15 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
                   <AgentCard key={agent.id} agent={agent} />
                 ))}
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {data.pods.map((pod) => (
-                  <div key={pod.id} className="rounded-md border border-line bg-white p-3">
-                    <div className="font-semibold uppercase">{pod.sector}</div>
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                      <div>
-                        <div className="font-mono">{pod.activeMarkets}</div>
-                        <div className="text-slate-500">markets</div>
-                      </div>
-                      <div>
-                        <div className="font-mono">{pod.approvedCandidates}</div>
-                        <div className="text-slate-500">approved</div>
-                      </div>
-                      <div>
-                        <div className="font-mono">{pod.blockedTrades}</div>
-                        <div className="text-slate-500">blocked</div>
-                      </div>
-                    </div>
-                  </div>
+                  <PodCard key={pod.id} pod={pod} />
                 ))}
               </div>
+            </Panel>
+
+            <Panel title="Research Pipeline & Pod Governance" icon={<SquareActivity className="h-4 w-4" />}>
+              <GovernancePanel scouts={data.researchScouts} proposals={data.podProposals} reviews={data.executiveReviews} />
             </Panel>
 
             <Panel title="Execution Tape & Audit" icon={<ClipboardCheck className="h-4 w-4" />} id="execution-panel">
@@ -230,6 +230,117 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
       </div>
     </main>
     </Providers>
+  );
+}
+
+function PodCard({ pod }: { pod: SectorPod }) {
+  const tone = pod.lifecycleStatus === "active"
+    ? "success"
+    : pod.lifecycleStatus === "pip" || pod.lifecycleStatus === "incubating"
+      ? "warning"
+      : pod.lifecycleStatus === "defense"
+        ? "danger"
+        : pod.lifecycleStatus === "sleeping"
+          ? "neutral"
+          : "info";
+  return (
+    <div className="rounded-md border border-line bg-white p-3 text-xs">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="font-semibold uppercase">{pod.sector}</div>
+          <div className="mt-1 text-slate-600">{pod.mandate.executiveSummary}</div>
+        </div>
+        <StatusPill tone={tone}>{pod.lifecycleStatus}</StatusPill>
+      </div>
+      <div className="mt-3 grid grid-cols-5 gap-2">
+        <Cell label="Analysts" value={`${pod.mandate.analystCount}/${pod.mandate.targetAnalystCount}`} />
+        <Cell label="Score" value={String(pod.mandate.mandateScore)} />
+        <Cell label="PnL" value={`$${pod.mandate.totalPnl}`} />
+        <Cell label="Markets" value={String(pod.activeMarkets)} />
+        <Cell label="Approved" value={String(pod.approvedCandidates)} />
+      </div>
+      <div className="mt-2 border-t border-slate-100 pt-2 text-slate-600">{pod.mandate.thesis}</div>
+      <div className="mt-2 grid grid-cols-2 gap-2 text-slate-500">
+        <div>Review: {new Date(pod.mandate.nextReviewAt).toLocaleTimeString()}</div>
+        <div>Cadence: {pod.mandate.reviewCadence}</div>
+      </div>
+      {pod.mandate.requiredDefense.length ? (
+        <div className="mt-2 rounded-md border border-warning/30 bg-amber-50 p-2 text-warning">
+          Defense required: {pod.mandate.requiredDefense.join(", ")}
+        </div>
+      ) : null}
+      <div className="mt-2 flex flex-wrap gap-1">
+        {pod.mandate.actions.slice(0, 3).map((action) => (
+          <span key={action} className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">
+            {action}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GovernancePanel({
+  scouts,
+  proposals,
+  reviews
+}: {
+  scouts: ResearchScout[];
+  proposals: PodProposal[];
+  reviews: ExecutiveReview[];
+}) {
+  return (
+    <div className="space-y-4 text-xs">
+      <div>
+        <div className="mb-2 font-semibold text-slate-700">Research scouts</div>
+        <div className="grid grid-cols-2 gap-2">
+          {scouts.slice(0, 6).map((scout) => (
+            <div key={scout.id} className="rounded-md border border-line bg-slate-50 p-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold">{scout.focus}</span>
+                <StatusPill tone={scout.status === "proposing" ? "success" : scout.status === "investigating" ? "info" : "neutral"}>
+                  {scout.status}
+                </StatusPill>
+              </div>
+              <div className="mt-1 text-slate-600">{scout.lastFinding}</div>
+              {scout.sleepUntil ? <div className="mt-1 font-mono text-[11px] text-slate-500">wake {new Date(scout.sleepUntil).toLocaleTimeString()}</div> : null}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div className="mb-2 font-semibold text-slate-700">Pod proposals</div>
+        {proposals.slice(0, 4).map((proposal) => (
+          <div key={proposal.id} className="mb-2 rounded-md border border-line p-2 last:mb-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold">{proposal.title}</span>
+              <StatusPill tone={proposal.status === "proposed" || proposal.status === "incubating" ? "warning" : "neutral"}>
+                {proposal.status}
+              </StatusPill>
+            </div>
+            <div className="mt-1 text-slate-600">{proposal.rationale}</div>
+            <div className="mt-1 font-mono text-[11px] text-slate-500">
+              conf {(proposal.confidence * 100).toFixed(0)}% | analysts {proposal.requiredAnalysts} | markets {proposal.marketCount}
+            </div>
+          </div>
+        ))}
+        {proposals.length === 0 ? <div className="text-slate-500">No new pod proposals; scouts with no mandate are sleeping.</div> : null}
+      </div>
+      <div>
+        <div className="mb-2 font-semibold text-slate-700">Executive reviews</div>
+        {reviews.slice(0, 3).map((review) => (
+          <div key={review.id} className="mb-2 rounded-md border border-danger/20 bg-rose-50 p-2 last:mb-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold">{review.sector}</span>
+              <StatusPill tone={review.status === "defense" ? "danger" : "warning"}>{review.status}</StatusPill>
+            </div>
+            <div className="mt-1 text-slate-700">{review.decision}</div>
+            <div className="mt-1 text-slate-600">{review.questions[0]}</div>
+          </div>
+        ))}
+        {reviews.length === 0 ? <div className="text-slate-500">No pods currently on PIP or defense.</div> : null}
+      </div>
+    </div>
   );
 }
 
@@ -303,7 +414,7 @@ function AgentCard({ agent }: { agent: AgentNode }) {
           <div className="truncate font-semibold text-slate-800">{agent.name}</div>
           <div className="font-mono text-[11px] text-slate-500">{agent.operatingMode ?? "debate"}</div>
         </div>
-        <StatusPill tone={agent.status === "running" ? "success" : agent.status === "blocked" ? "danger" : "info"}>
+        <StatusPill tone={agentStatusTone(agent.status)}>
           {agent.status}
         </StatusPill>
       </div>
@@ -313,6 +424,14 @@ function AgentCard({ agent }: { agent: AgentNode }) {
       </div>
     </div>
   );
+}
+
+function agentStatusTone(status: AgentNode["status"]): "success" | "warning" | "danger" | "info" | "neutral" {
+  if (status === "running" || status === "complete") return "success";
+  if (status === "pip") return "warning";
+  if (status === "blocked") return "danger";
+  if (status === "sleeping") return "neutral";
+  return "info";
 }
 
 function Metric({ label, value, tone }: { label: string; value: string; tone?: "positive" | "negative" }) {

@@ -4,6 +4,8 @@ export type OrderSide = "yes" | "no";
 export type OrderAction = "buy" | "sell";
 export type TradeSource = "agent" | "copilot" | "operator" | "demo";
 export type SettlementOutcome = "yes" | "no";
+export type AgentStatus = "idle" | "running" | "blocked" | "complete" | "sleeping" | "pip";
+export type PodLifecycleStatus = "scouting" | "incubating" | "active" | "pip" | "defense" | "sleeping" | "closed";
 
 export type IntegrationStatus = {
   name: "Kalshi" | "Redis" | "Weave" | "CopilotKit";
@@ -294,12 +296,77 @@ export type AgentNode = {
   id: string;
   name: string;
   role: string;
-  status: "idle" | "running" | "blocked" | "complete";
+  status: AgentStatus;
   lastDecision: string;
   sector?: string;
   operatingMode?: "discover" | "debate" | "negotiate" | "approve" | "execute" | "monitor";
   decisionRights?: string[];
   systemPrompt?: string;
+};
+
+export type PodMandate = {
+  status: PodLifecycleStatus;
+  analystCount: number;
+  targetAnalystCount: number;
+  marketCount: number;
+  opportunityCount: number;
+  approvedOpportunityCount: number;
+  openExposure: number;
+  realizedPnl: number;
+  unrealizedPnl: number;
+  totalPnl: number;
+  settledPnl: number;
+  closedPnl: number;
+  mandateScore: number;
+  reviewCadence: "continuous" | "hourly" | "daily" | "sleep";
+  nextReviewAt: string;
+  sleepUntil?: string;
+  pipStartedAt?: string;
+  defenseDueAt?: string;
+  thesis: string;
+  executiveSummary: string;
+  requiredDefense: string[];
+  actions: string[];
+};
+
+export type ResearchScout = {
+  id: string;
+  name: string;
+  focus: string;
+  status: "investigating" | "proposing" | "sleeping";
+  proposalsGenerated: number;
+  marketsReviewed: number;
+  lastFinding: string;
+  sleepUntil?: string;
+};
+
+export type PodProposal = {
+  id: string;
+  proposedPodId: string;
+  sector: string;
+  title: string;
+  status: "proposed" | "incubating" | "rejected" | "sleeping";
+  confidence: number;
+  marketCount: number;
+  opportunityCount: number;
+  requiredAnalysts: number;
+  proposedBy: string;
+  rationale: string;
+  risks: string[];
+  createdAt: string;
+  sleepUntil?: string;
+};
+
+export type ExecutiveReview = {
+  id: string;
+  podId: string;
+  sector: string;
+  status: "scheduled" | "pip" | "defense" | "passed" | "closed";
+  pnl: number;
+  mandateScore: number;
+  questions: string[];
+  decision: string;
+  dueAt: string;
 };
 
 export type PaperCycleResult = {
@@ -322,6 +389,8 @@ export type SectorPod = {
   activeMarkets: number;
   blockedTrades: number;
   approvedCandidates: number;
+  lifecycleStatus: PodLifecycleStatus;
+  mandate: PodMandate;
 };
 
 export type DemoRun = {
@@ -334,5 +403,8 @@ export type DemoRun = {
   activity: ActivityEvent[];
   fundAgents: AgentNode[];
   pods: SectorPod[];
+  researchScouts: ResearchScout[];
+  podProposals: PodProposal[];
+  executiveReviews: ExecutiveReview[];
   integrationStatus: IntegrationStatus[];
 };

@@ -32,9 +32,23 @@ export const agentPolicies: AgentPolicy[] = [
   {
     role: "Research Director Agent",
     operatingMode: "debate",
-    decisionRights: ["Challenge assumptions", "Look for duplicated exposure", "Request postmortems"],
+    decisionRights: ["Challenge assumptions", "Look for duplicated exposure", "Open or close pod mandates"],
     systemPrompt:
-      "You are research director. Search for stale prices, hidden correlations, duplicated event exposure, and thesis failure modes. Reward falsifiable evidence and penalize brittle narratives."
+      "You are research director. Continuously scout new sectors, propose pods only when the public edge is defensible, and put idle scouts to sleep when no proposal clears the bar."
+  },
+  {
+    role: "Sector Discovery Researcher",
+    operatingMode: "discover",
+    decisionRights: ["Investigate uncovered sectors", "Propose new pods", "Sleep when no proposal clears threshold"],
+    systemPrompt:
+      "You are a sector discovery researcher. Investigate Kalshi market clusters until you can propose a pod with public evidence, liquidity, and risk budget. If no proposal clears the bar, sleep until new markets or evidence appear."
+  },
+  {
+    role: "Executive Review Agent",
+    operatingMode: "approve",
+    decisionRights: ["Approve pod mandates", "Put pods on PIP", "Close failing mandates"],
+    systemPrompt:
+      "You are the executive committee reviewer. Pods must defend their analyst headcount with PnL, calibration, and public edge. Put losers on PIP, require defense memos, and close mandates that cannot justify risk."
   },
   {
     role: "Execution Supervisor Agent",
@@ -48,7 +62,7 @@ export const agentPolicies: AgentPolicy[] = [
     operatingMode: "approve",
     decisionRights: ["Synthesize analyst debate", "Choose YES/NO side", "Negotiate with Risk Agent"],
     systemPrompt:
-      "You are a sector PM. Convert analyst views into small paper recommendations. Accept CRO counteroffers when they preserve expected value. Stand down when the thesis cannot be falsified or priced."
+      "You are a sector PM. Convert analyst views into small paper recommendations and defend your pod's mandate with PnL. Accept CRO counteroffers when they preserve expected value. Stand down when the thesis cannot be falsified or priced."
   },
   {
     role: "Sector Risk Agent",

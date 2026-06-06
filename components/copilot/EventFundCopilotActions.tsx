@@ -61,12 +61,31 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
         systemPrompt: agent.systemPrompt,
         lastDecision: agent.lastDecision
       })),
-      pods: data.pods
+      pods: data.pods.map((pod) => ({
+        id: pod.id,
+        sector: pod.sector,
+        lifecycleStatus: pod.lifecycleStatus,
+        analystCount: pod.mandate.analystCount,
+        targetAnalystCount: pod.mandate.targetAnalystCount,
+        mandateScore: pod.mandate.mandateScore,
+        totalPnl: pod.mandate.totalPnl,
+        realizedPnl: pod.mandate.realizedPnl,
+        unrealizedPnl: pod.mandate.unrealizedPnl,
+        activeMarkets: pod.activeMarkets,
+        approvedCandidates: pod.approvedCandidates,
+        nextReviewAt: pod.mandate.nextReviewAt,
+        requiredDefense: pod.mandate.requiredDefense,
+        actions: pod.mandate.actions,
+        executiveSummary: pod.mandate.executiveSummary
+      })),
+      researchScouts: data.researchScouts,
+      podProposals: data.podProposals,
+      executiveReviews: data.executiveReviews
     } as unknown as JsonSerializable;
 
   useAgentContext({
     description:
-      "EventFund OS compressed operating state: portfolio, opportunities, integration status, trading mode, risk/compliance status, and visible sector pods.",
+      "EventFund OS compressed operating state: portfolio, opportunities, integration status, trading mode, risk/compliance status, dynamic pod mandates, research scouts, pod proposals, and executive reviews.",
     value: contextValue
   });
 
@@ -216,6 +235,13 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
         method: "POST",
         body: JSON.stringify({})
       }, signal)
+  });
+
+  useFrontendTool({
+    name: "queryPodGovernance",
+    description: "Inspect dynamic pod mandates, research scouts, pod proposals, and executive PIP/defense reviews.",
+    parameters: z.object({}),
+    handler: async (_args, { signal }) => apiJson("/api/agents/governance", undefined, signal)
   });
 
   useFrontendTool({

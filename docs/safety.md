@@ -75,6 +75,17 @@ The Risk Agent can negotiate inside hard limits, but it cannot waive true circui
 
 `POST /api/agents/paper-cycle` is the current volume path. It asks the CIO to rank eligible opportunities by directional edge, confidence, liquidity quality, risk score, negotiation cost, and sector crowding. It then routes only risk-approved and compliance-approved opportunities to the paper execution engine. The endpoint records the cycle in Redis Streams, saves ranked opportunities, emits audit events, and remains paper-only.
 
+## Dynamic Pod Governance
+
+`GET /api/agents/governance` recomputes the fund operating model from current Kalshi markets, paper opportunities, portfolio PnL, settlements, and open exposure.
+
+- Research scouts investigate live market clusters and create pod proposals only when the theme has enough market depth or approved paper candidates.
+- Scouts with no proposal enter a sleeping state with a wake time.
+- Pods dynamically change analyst count based on lifecycle state and opportunity load.
+- Active pods must defend their mandate with PnL, calibration, and a falsifiable public-information edge.
+- Pods with losses or weak mandate scores are moved to PIP or executive defense. Defense requires PnL attribution, thesis failure analysis, prompt/sizing changes, and next probe budget.
+- PIP/defense does not bypass risk or compliance; it restricts the pod's mandate and analyst allocation.
+
 ## Paper Accounting
 
 Paper accounting separates:

@@ -12,6 +12,7 @@ This repo was created as a greenfield implementation in an empty workspace.
 - W&B Weave tracing integration with safe missing-credential degradation.
 - CopilotKit runtime, sidebar, readable state, and trading control actions.
 - Multi-agent trading hierarchy: CIO, CRO, compliance, research director, execution supervisor, and dynamic sector pods.
+- Dynamic pod governance: research scouts propose new pods, pods resize analyst headcount, losing pods move to PIP/defense, and idle scouts sleep until new markets appear.
 - Quant scoring: market-implied probability, fair probability, EV, confidence, liquidity quality, capped Kelly sizing, Brier/calibration helpers.
 - Paper trading engine that updates Redis-backed portfolio state.
 - CIO-driven paper cycle endpoint that ranks opportunities, enqueues Redis Stream tasks, writes audit events, and executes the approved paper slate.
@@ -168,12 +169,21 @@ PnL semantics:
 - `realizedPnl`: `closedPnl + settledPnl`.
 - `totalPnl`: `realizedPnl + unrealizedPnl`.
 
+Dynamic pod governance:
+
+- Research scouts continuously classify live Kalshi markets into pod themes.
+- When a theme has enough market depth and approved paper opportunities, scouts propose or incubate a pod.
+- If no proposal clears the threshold, the scout records a sleep-until time instead of pretending to work forever.
+- Active pods defend analyst headcount with PnL, calibration, opportunities, and liquidity.
+- Losing pods move to PIP or executive defense, reducing analyst count and requiring a defense memo before more risk budget.
+
 ## Key Endpoints
 
 - `GET /api/integrations`
 - `GET /api/markets`
 - `GET /api/opportunities`
 - `POST /api/agents/paper-cycle`
+- `GET /api/agents/governance`
 - `POST /api/trades/:id/approve`
 - `POST /api/trades/:ticker/close`
 - `POST /api/trades/:ticker/settle`

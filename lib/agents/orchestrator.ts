@@ -1,5 +1,6 @@
 import type { DemoRun, Opportunity } from "@/lib/domain";
-import { agentHierarchy, buildDemoOpportunities, buildSectorPods, demoActivity } from "@/lib/data/seeds";
+import { agentHierarchy, buildDemoOpportunities, demoActivity } from "@/lib/data/seeds";
+import { buildFundOperatingState } from "@/lib/agents/fund-management";
 import { getMarkets } from "@/lib/services/market-service";
 import { getPortfolioSnapshot, markPortfolioToMarket } from "@/lib/portfolio/engine";
 import { staticIntegrationStatus } from "@/lib/config/env";
@@ -18,6 +19,7 @@ export async function runDemoWorkflow(): Promise<DemoRun> {
     const marketResult = await getMarkets();
     const portfolio = await markPortfolioToMarket(marketResult.markets).catch(() => getPortfolioSnapshot());
     const opportunities = buildDemoOpportunities(marketResult.markets, portfolio);
+    const fundState = buildFundOperatingState({ markets: marketResult.markets, opportunities, portfolio });
     const activity = await getAuditEvents(30).catch(() => demoActivity);
     const redis = await redisHealth();
     const status = staticIntegrationStatus().map((item) => (item.name === "Redis" ? redis : item));
@@ -30,7 +32,10 @@ export async function runDemoWorkflow(): Promise<DemoRun> {
       portfolio,
       activity: activity.length ? activity : demoActivity,
       fundAgents: agentHierarchy,
-      pods: buildSectorPods(marketResult.markets, opportunities),
+      pods: fundState.pods,
+      researchScouts: fundState.researchScouts,
+      podProposals: fundState.podProposals,
+      executiveReviews: fundState.executiveReviews,
       integrationStatus: status
     };
   });
