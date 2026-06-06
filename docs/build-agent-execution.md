@@ -13,6 +13,15 @@ The CTO agent split the work across specialist build agents before implementatio
 - Engineering Lead Agent converted the plan into implementation files and dependency cautions.
 - QA/Test Agent defined smoke tests and failure-mode gates.
 
+## Automation Cohort
+
+- Backend Engineer added the locked paper daemon, bounded route handlers, and production operator-token guard.
+- Redis Infrastructure Agent added consumer-group reads and acknowledgements for fund worker queues.
+- Agent Orchestration Engineer added worker handlers for paper cycles, reconciliation, policy learning, and executive review.
+- Data/Quant Engineer added event-cluster exposure detection for duplicated Kalshi risk.
+- QA/Test Agent added risk-cluster and settlement-inference coverage plus smoke checks for daemon/worker surfaces.
+- Documentation Agent updated runbooks for continuous paper trading, learning proposals, reconciliation, and production access control.
+
 ## CTO Resolutions
 
 - Use one compact Next.js app instead of a monorepo because the repo was empty and the MVP should run locally.
@@ -27,6 +36,7 @@ The CTO agent split the work across specialist build agents before implementatio
 - Data/Quant Engineer: `lib/quant`, forecast and sizing calculations.
 - Agent Orchestration Engineer: `lib/agents`, sector pods, debates, CIO memo.
 - Redis Infrastructure Agent: `lib/redis`, idempotency, audit, Pub/Sub, Streams.
+- Runtime/Workers Agent: `lib/agents/daemon.ts`, `lib/agents/workers.ts`, `scripts/paper-daemon.mjs`.
 - Weave Observability Agent: `lib/observability`.
 - CopilotKit Agent: `app/api/copilotkit`, `components/copilot`.
 - Frontend/UX: `components/CommandCenter.tsx`.

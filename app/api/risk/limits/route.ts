@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getRiskLimits } from "@/lib/config/env";
 import { appendAuditEvent } from "@/lib/redis/coordination";
+import { operatorAuthResponse } from "@/lib/security/operator-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,6 +18,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = operatorAuthResponse(req);
+  if (auth) return auth;
   const parsed = changeSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid risk limit change request.", issues: parsed.error.issues }, { status: 400 });

@@ -239,6 +239,66 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
   });
 
   useFrontendTool({
+    name: "runContinuousPaperDaemonTick",
+    description:
+      "Run one locked continuous paper-trading daemon tick: scan Kalshi markets, mark paper positions, enqueue worker tasks, run one worker batch, and audit the result.",
+    parameters: z.object({}),
+    handler: async (_args, { signal }) =>
+      apiJson("/api/agents/daemon/tick", {
+        method: "POST",
+        body: JSON.stringify({})
+      }, signal)
+  });
+
+  useFrontendTool({
+    name: "runRedisFundWorkersOnce",
+    description:
+      "Consume one bounded batch from the Redis Stream worker queues for research, risk, execution, reconciliation, policy learning, and executive review.",
+    parameters: z.object({}),
+    handler: async (_args, { signal }) =>
+      apiJson("/api/agents/workers/run-once", {
+        method: "POST",
+        body: JSON.stringify({})
+      }, signal)
+  });
+
+  useFrontendTool({
+    name: "runAgentLearningProposal",
+    description:
+      "Ask the Calibration Agent to inspect paper PnL/calibration and propose a permissioned paper-cycle policy patch.",
+    parameters: z.object({}),
+    handler: async (_args, { signal }) =>
+      apiJson("/api/agents/learning/propose", {
+        method: "POST",
+        body: JSON.stringify({})
+      }, signal)
+  });
+
+  useFrontendTool({
+    name: "runPaperSettlementReconciliation",
+    description:
+      "Poll Kalshi market detail for open paper positions and auto-settle only when the market is settled and the outcome is inferable.",
+    parameters: z.object({}),
+    handler: async (_args, { signal }) =>
+      apiJson("/api/agents/reconciliation/run", {
+        method: "POST",
+        body: JSON.stringify({})
+      }, signal)
+  });
+
+  useFrontendTool({
+    name: "runExecutiveCommitteeReview",
+    description:
+      "Run the executive committee loop to open, expand, PIP, freeze, merge, close, or sleep sector pods based on paper PnL and mandate score.",
+    parameters: z.object({}),
+    handler: async (_args, { signal }) =>
+      apiJson("/api/agents/executive-review/run", {
+        method: "POST",
+        body: JSON.stringify({})
+      }, signal)
+  });
+
+  useFrontendTool({
     name: "queryPodGovernance",
     description: "Inspect dynamic pod mandates, research scouts, pod proposals, and executive PIP/defense reviews.",
     parameters: z.object({}),

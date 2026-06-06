@@ -13,12 +13,14 @@ Use Railway, Render, Fly, or AWS ECS with the included `Dockerfile`. Railway is 
 - `/api/health`: liveness plus mandatory integration readiness.
 - `.env.cloud.example`: production paper-trading environment template.
 - `npm run cloud:preflight`: checks cloud env readiness before launch.
+- `npm run daemon:paper`: runs repeating daemon ticks against `EVENTFUND_APP_URL`.
 
 The Next.js standalone output is controlled by `EVENTFUND_DEPLOY_TARGET=cloud`. Local development and local builds omit that flag and use normal Next output.
 
 ## Required Cloud Services
 
 - App container running EventFund OS.
+- Optional worker container running `npm run daemon:paper` against the same app URL and Redis.
 - Managed Redis or Redis Stack exposed through `REDIS_URL`.
 - Kalshi API credentials for authenticated API paths.
 - W&B Weave credentials.
@@ -62,12 +64,21 @@ curl https://YOUR_APP_URL/api/integrations
 curl https://YOUR_APP_URL/api/agents/policy
 ```
 
+9. Start a worker process when the web app is healthy:
+
+```bash
+EVENTFUND_APP_URL=https://YOUR_APP_URL PAPER_DAEMON_MAX_TICKS=0 npm run daemon:paper
+```
+
+Set `OPERATOR_API_TOKEN` in both the web and worker environments. The worker sends it as a bearer token when present.
+
 ## Current Blockers Before I Can Deploy It For You
 
 I cannot complete the actual cloud deployment from this local workspace without:
 
 - Cloud provider account/project access.
 - Managed Redis connection string.
+- Strong `OPERATOR_API_TOKEN` for production mutating API routes.
 - Kalshi API key and private key in the cloud secret store.
 - W&B API key and project/entity values in the cloud secret store.
 - A reachable cloud model backend for CopilotKit. For the free-model path, that means an Ollama service URL reachable from the app.

@@ -36,6 +36,7 @@ if (isTruthy(env.ALLOW_DEMO_MARKETS)) {
 }
 
 requireValue("REDIS_URL", "REDIS_URL managed Redis connection string");
+requireValue("OPERATOR_API_TOKEN", "OPERATOR_API_TOKEN for production mutating API access");
 requireValue("KALSHI_API_KEY");
 if (!env.KALSHI_PRIVATE_KEY && !env.KALSHI_PRIVATE_KEY_PATH && !env.KALSHI_API_SECRET) {
   blockers.push("KALSHI_PRIVATE_KEY or KALSHI_PRIVATE_KEY_PATH");
@@ -61,6 +62,7 @@ console.log(`EventFund env: ${env.EVENTFUND_ENV || "dev"}`);
 console.log(`Deploy target: ${env.EVENTFUND_DEPLOY_TARGET || "local"}`);
 console.log(`CopilotKit model provider: ${provider()}`);
 console.log(`Redis configured: ${Boolean(env.REDIS_URL)}`);
+console.log(`Operator auth configured: ${Boolean(env.OPERATOR_API_TOKEN)}`);
 console.log(`Kalshi configured: ${Boolean(env.KALSHI_API_KEY && (env.KALSHI_PRIVATE_KEY || env.KALSHI_PRIVATE_KEY_PATH || env.KALSHI_API_SECRET))}`);
 console.log(`Weave configured: ${Boolean(env.WANDB_API_KEY && (env.WEAVE_PROJECT || env.WANDB_PROJECT))}`);
 

@@ -1,5 +1,6 @@
 import type { Forecast, Market, PortfolioSnapshot, RiskDecision, RiskLimits, RiskNegotiationTurn } from "@/lib/domain";
 import { cappedFractionalKelly, clamp } from "@/lib/quant/scoring";
+import { eventClusterExposure, eventClusterKey } from "@/lib/risk/event-cluster";
 
 export type RiskInput = {
   market: Market;
@@ -18,6 +19,8 @@ export function evaluateRisk(input: RiskInput, limits: RiskLimits): RiskDecision
   const negotiation: RiskNegotiationTurn[] = [];
   const portfolio = input.portfolio;
   const sectorExposure = portfolio?.sectorExposure[input.market.sector] ?? 0;
+  const clusterKey = eventClusterKey(input.market);
+  const clusterExposure = eventClusterExposure({ portfolio, market: input.market });
   const openOrders = portfolio?.orders.filter((order) => order.status === "proposed" || order.status === "live_submitted").length ?? 0;
   const dailyLoss = Math.min(0, portfolio?.dailyPnl ?? 0);
   const weeklyLoss = Math.min(0, portfolio?.weeklyPnl ?? 0);
@@ -36,7 +39,8 @@ export function evaluateRisk(input: RiskInput, limits: RiskLimits): RiskDecision
   const sideFairProbability = inferredSide === "yes" ? input.forecast.fairProbability : 1 - input.forecast.fairProbability;
   const directionalEdge = Math.max(0, sideFairProbability - sideMarketProbability);
   const remainingSectorCapacity = Math.max(0, limits.maxSectorExposure - sectorExposure);
-  const hardNotionalCap = Math.min(limits.maxPositionSize, remainingSectorCapacity);
+  const remainingClusterCapacity = Math.max(0, limits.maxCorrelatedExposure - clusterExposure);
+  const hardNotionalCap = Math.min(limits.maxPositionSize, remainingSectorCapacity, remainingClusterCapacity);
   const remainingRiskAgentSectorCapacity = Math.max(0, limits.riskAgentTargetSectorExposure - sectorExposure);
   const riskAgentNotionalCap = Math.min(
     limits.riskAgentMaxPositionSize,
@@ -105,6 +109,23 @@ export function evaluateRisk(input: RiskInput, limits: RiskLimits): RiskDecision
     negotiableBlockedBy.push("RISK_AGENT_SECTOR_TARGET");
     reasons.push(`Risk Agent sector target ${limits.riskAgentTargetSectorExposure} would be exceeded.`);
     conditions.push("Risk Agent reduced size because sector target exposure is already crowded.");
+  }
+  if (remainingClusterCapacity <= 0) {
+    hardBlockedBy.push("MAX_CORRELATED_EXPOSURE");
+    reasons.push(`Event cluster ${clusterKey} is already at the correlated exposure cap ${limits.maxCorrelatedExposure}.`);
+  } else if (clusterExposure + input.requestedNotional > limits.maxCorrelatedExposure) {
+    negotiableBlockedBy.push("MAX_CORRELATED_EXPOSURE");
+    reasons.push(`Risk capped notional to remaining event-cluster capacity ${remainingClusterCapacity}.`);
+    conditions.push(`Stay within correlated event cluster ${clusterKey} capacity of $${remainingClusterCapacity.toFixed(2)}.`);
+    negotiation.push({
+      agent: "Chief Risk Officer Agent",
+      role: "Cluster Risk Counterparty",
+      stance: "oppose",
+      message: `Related contract exposure in ${clusterKey} leaves $${remainingClusterCapacity.toFixed(2)} of capacity before duplicated-risk limits bind.`,
+      scoreImpact: -0.08,
+      constraint: "MAX_CORRELATED_EXPOSURE",
+      proposedNotional: remainingClusterCapacity
+    });
   }
   if (openOrders >= limits.maxOpenOrders) {
     hardBlockedBy.push("MAX_OPEN_ORDERS");

@@ -175,6 +175,63 @@ describe("risk engine", () => {
     expect(decision.hardBlockedBy).toContain("OPPOSITE_POSITION");
   });
 
+  it("caps duplicated event-cluster exposure across related contracts", () => {
+    const market = {
+      ...demoMarkets[0],
+      ticker: "KXMLBTOTAL-26JUN061415CINSTL-16",
+      eventTicker: "KXMLBTOTAL-26JUN061415CINSTL"
+    };
+    const decision = evaluateRisk(
+      {
+        market,
+        forecast: computeForecast(market, 0.7),
+        requestedNotional: 30,
+        portfolio: {
+          mode: "paper",
+          cash: 1000,
+          availableCapital: 1000,
+          netLiquidationValue: 1000,
+          dailyPnl: 0,
+          weeklyPnl: 0,
+          realizedPnl: 0,
+          unrealizedPnl: 0,
+          totalPnl: 0,
+          closedPnl: 0,
+          settledPnl: 0,
+          openExposure: 95,
+          sectorExposure: { [market.sector]: 95 },
+          positions: [
+            {
+              ticker: "KXMLBTOTAL-26JUN061415CINSTL-15",
+              sector: market.sector,
+              yesContracts: 190,
+              noContracts: 0,
+              avgCost: 0.5,
+              markPrice: 0.5,
+              realizedPnl: 0,
+              unrealizedPnl: 0,
+              mode: "paper"
+            }
+          ],
+          orders: [],
+          settlements: [],
+          calibration: {
+            settledTrades: 0,
+            brierScore: 0,
+            winRate: 0,
+            byBucket: [],
+            updatedAt: "2026-06-06T18:45:00.000Z"
+          },
+          updatedAt: "2026-06-06T18:45:00.000Z"
+        }
+      },
+      { ...limits, maxCorrelatedExposure: 100 }
+    );
+    expect(decision.approved).toBe(true);
+    expect(decision.negotiableBlockedBy).toContain("MAX_CORRELATED_EXPOSURE");
+    expect(decision.positionSize).toBeLessThanOrEqual(5);
+  });
+
   it("denies live mode when any prerequisite is missing", () => {
     const decision = liveGateDecision({
       requestedMode: "paper",

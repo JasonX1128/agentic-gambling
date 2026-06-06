@@ -66,6 +66,7 @@ Implemented controls include:
 
 - Max position size.
 - Max sector exposure.
+- Max correlated event-cluster exposure.
 - Daily and weekly loss checks.
 - Max open orders.
 - Max slippage.
@@ -79,7 +80,6 @@ Implemented controls include:
 
 Additional controls are represented in config and ready to extend:
 
-- Max correlated exposure.
 - Evidence quality.
 - Rule ambiguity.
 - Max drawdown.
@@ -87,6 +87,8 @@ Additional controls are represented in config and ready to extend:
 The Risk Agent can negotiate inside hard limits, but it cannot waive true circuit breakers. Loss limits, full sector capacity exhaustion, open-order caps, impossible spreads beyond the configured circuit breaker, unusable liquidity, and very low confidence remain non-negotiable. Softer misses against Risk Agent targets, such as wider-than-desired spreads, thin-but-tradable liquidity, lower confidence, crowded sectors, or oversized analyst requests, produce a smaller counteroffer and required analyst actions instead of an automatic hard stop.
 
 `POST /api/agents/paper-cycle` is the current volume path. It asks the CIO to rank eligible opportunities by directional edge, confidence, liquidity quality, risk score, negotiation cost, and sector crowding. It then routes only risk-approved and compliance-approved opportunities to the paper execution engine. The endpoint records the cycle in Redis Streams, saves ranked opportunities, emits audit events, and remains paper-only.
+
+`POST /api/agents/daemon/tick` is the continuous operating path. It takes a Redis lock, scans Kalshi markets, marks paper positions, queues research/risk/paper/reconciliation/learning/executive work, consumes one bounded Redis Stream worker batch, and audits the result. `npm run daemon:paper` can repeat that tick for local or cloud worker processes.
 
 ## Dynamic Pod Governance
 
@@ -98,6 +100,7 @@ The Risk Agent can negotiate inside hard limits, but it cannot waive true circui
 - Active pods must defend their mandate with PnL, calibration, and a falsifiable public-information edge.
 - Pods with losses or weak mandate scores are moved to PIP or executive defense. Defense requires PnL attribution, thesis failure analysis, prompt/sizing changes, and next probe budget.
 - PIP/defense does not bypass risk or compliance; it restricts the pod's mandate and analyst allocation.
+- `POST /api/agents/executive-review/run` records executive actions such as open, expand, hold, PIP, freeze, close-or-merge, or sleep.
 
 ## Paper Accounting
 
@@ -109,4 +112,10 @@ Paper accounting separates:
 - `realizedPnl`: closed plus settled PnL.
 - `totalPnl`: realized plus unrealized PnL.
 
-Settlements record outcome, settlement price, realized PnL, forecast probability, Brier score, and calibration bucket. They also emit a postmortem audit event. Settlement is manual in paper mode because the app does not yet run a scheduled Kalshi settlement reconciliation worker.
+Settlements record outcome, settlement price, realized PnL, forecast probability, Brier score, and calibration bucket. They also emit a postmortem audit event. `POST /api/agents/reconciliation/run` and the daemon reconciliation worker poll Kalshi market detail for open paper positions and auto-settle only when Kalshi marks a market settled and the resolved side is inferable from terminal prices. Ambiguous closed/settled markets are audited and left open for operator review.
+
+## Production Access Control
+
+Local dev mutating routes remain open unless `OPERATOR_API_TOKEN` is set. In production, or any environment with `OPERATOR_API_TOKEN`, state-changing routes require `Authorization: Bearer <OPERATOR_API_TOKEN>` or `x-operator-token`.
+
+Protected routes include paper-cycle execution, daemon ticks, worker runs, reconciliation, learning proposals, executive review, policy mutation, risk-limit requests, live-gate requests, paper approval/close/settlement, live execution, and mark-to-market.

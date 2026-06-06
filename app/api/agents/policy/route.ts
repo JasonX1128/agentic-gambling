@@ -10,6 +10,7 @@ import {
   requiredPermissionForSection
 } from "@/lib/agents/operating-policy";
 import { appendAuditEvent } from "@/lib/redis/coordination";
+import { operatorAuthResponse } from "@/lib/security/operator-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +34,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = operatorAuthResponse(req);
+  if (auth) return auth;
   const parsed = policyActionSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid policy change request.", issues: parsed.error.issues }, { status: 400 });

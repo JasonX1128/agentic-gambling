@@ -18,6 +18,12 @@ This repo was created as a greenfield implementation in an empty workspace.
 - Quant scoring: market-implied probability, fair probability, EV, confidence, liquidity quality, capped Kelly sizing, Brier/calibration helpers.
 - Paper trading engine that updates Redis-backed portfolio state.
 - CIO-driven paper cycle endpoint that ranks opportunities, enqueues Redis Stream tasks, writes audit events, and executes the approved paper slate.
+- Continuous paper-trading daemon that scans markets, marks positions, enqueues Redis Stream work, runs bounded workers, and audits each tick.
+- Redis Stream workers for research, risk cluster review, paper execution, settlement reconciliation, policy learning, and executive committee review.
+- Agent learning loop that proposes permissioned edits to the file-backed paper-cycle policy from PnL and calibration.
+- Conservative Kalshi settlement reconciliation for open paper positions when market status and terminal prices make the outcome inferable.
+- Event-cluster exposure risk checks across related Kalshi contracts.
+- Production operator-token guard for mutating control routes.
 - Paper close, settlement, mark-to-market, realized/unrealized/settled PnL, and Brier/calibration accounting.
 - Live order path present but blocked unless every live prerequisite is satisfied.
 - Risk/compliance engines that block unsafe trades server-side.
@@ -82,6 +88,7 @@ ENABLE_LIVE_TRADING=false
 GLOBAL_KILL_SWITCH=false
 ALLOW_DEMO_MARKETS=false
 REDIS_URL=redis://localhost:6379
+OPERATOR_API_TOKEN=
 ```
 
 Kalshi market data and authenticated access:
@@ -152,6 +159,19 @@ GLOBAL_KILL_SWITCH=false
 
 Every live order still requires an explicit approval token, Redis idempotency, risk approval, compliance approval, and Kalshi credentials.
 
+Production access control:
+
+```env
+OPERATOR_API_TOKEN=replace-with-strong-secret
+```
+
+When `EVENTFUND_ENV=production` or `OPERATOR_API_TOKEN` is set, mutating routes require:
+
+```bash
+curl -X POST http://localhost:3000/api/agents/daemon/tick \
+  -H "Authorization: Bearer $OPERATOR_API_TOKEN"
+```
+
 Hard risk limits are broad circuit breakers. The default slippage rail is intentionally loose for paper calibration, while the Risk Agent's spread target remains strict. The Risk Agent applies target policy for sizing, spread, liquidity, confidence, and portfolio crowding, and can negotiate smaller paper probes without pretending the hard limits were breached.
 
 Paper-cycle defaults are intentionally loose for early calibration volume:
@@ -163,11 +183,34 @@ RISK_AGENT_MAX_POSITION_SIZE=50
 RISK_AGENT_TARGET_CONFIDENCE=0.62
 ```
 
+Continuous daemon and learning defaults:
+
+```env
+PAPER_DAEMON_ENABLED=false
+PAPER_DAEMON_INTERVAL_MS=300000
+PAPER_DAEMON_MAX_TICKS=1
+AGENT_POLICY_AUTOPILOT_APPLY=false
+```
+
 Run one agent-selected paper cycle:
 
 ```bash
 curl -X POST http://localhost:3000/api/agents/paper-cycle
 ```
+
+Run one continuous daemon tick:
+
+```bash
+curl -X POST http://localhost:3000/api/agents/daemon/tick
+```
+
+Run repeated daemon ticks from a local or cloud worker process:
+
+```bash
+npm run daemon:paper
+```
+
+Set `PAPER_DAEMON_MAX_TICKS=0` for a long-running worker process. In production, include `OPERATOR_API_TOKEN` and set `EVENTFUND_APP_URL` to the deployed app URL.
 
 Refresh paper marks from current Kalshi market data:
 
@@ -202,6 +245,13 @@ Dynamic pod governance:
 - If no proposal clears the threshold, the scout records a sleep-until time instead of pretending to work forever.
 - Active pods defend analyst headcount with PnL, calibration, opportunities, and liquidity.
 - Losing pods move to PIP or executive defense, reducing analyst count and requiring a defense memo before more risk budget.
+- The executive committee loop records open, expand, hold, PIP, freeze, close-or-merge, or sleep decisions based on pod PnL and mandate score.
+
+Agent learning loop:
+
+- `POST /api/agents/learning/propose` asks the Calibration Agent to inspect PnL, order count, Brier score, win rate, and open positions.
+- The loop validates a proposed `paperCycle` policy patch against permission rules and Redis auditability.
+- By default it records proposals only. `AGENT_POLICY_AUTOPILOT_APPLY=true` lets permitted paper-cycle changes write to `config/agent-operating-policy.json`; agents still cannot self-enable live trading or edit secrets.
 
 Agent operating policy:
 
@@ -217,6 +267,11 @@ Agent operating policy:
 - `GET /api/markets`
 - `GET /api/opportunities`
 - `POST /api/agents/paper-cycle`
+- `POST /api/agents/daemon/tick`
+- `POST /api/agents/workers/run-once`
+- `POST /api/agents/learning/propose`
+- `POST /api/agents/reconciliation/run`
+- `POST /api/agents/executive-review/run`
 - `GET /api/agents/governance`
 - `GET /api/agents/policy`
 - `POST /api/agents/policy`

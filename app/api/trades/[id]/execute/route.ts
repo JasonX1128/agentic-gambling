@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOpportunities } from "@/lib/agents/orchestrator";
 import { executeLiveTrade } from "@/lib/execution/engine";
+import { operatorAuthResponse } from "@/lib/security/operator-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = operatorAuthResponse(req);
+  if (auth) return auth;
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as { approvalToken?: string };
   const opportunity = (await getOpportunities()).find((item) => item.id === id);

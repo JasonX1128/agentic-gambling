@@ -33,9 +33,10 @@ export function selectPaperCycleSlate(
     .slice(0, maxTrades);
 }
 
-export async function runPaperCycle(): Promise<PaperCycleResult> {
+export async function runPaperCycle(options: { enqueueCoordinationTask?: boolean } = {}): Promise<PaperCycleResult> {
   return traceAsync("agent.paper_cycle", {}, async () => {
     const cycleId = `paper-cycle-${Date.now()}`;
+    const enqueueCoordinationTask = options.enqueueCoordinationTask ?? true;
     const config = getPaperCycleConfig();
     const startingPortfolio = await getPortfolioSnapshot();
     const opportunities = await getOpportunities();
@@ -52,13 +53,15 @@ export async function runPaperCycle(): Promise<PaperCycleResult> {
     let executionBlocked = 0;
     let idempotentSkips = 0;
 
-    await enqueueTask("cio-paper-cycle", {
-      cycleId,
-      kind: "paper_cycle",
-      maxTrades: String(config.maxTradesPerCycle),
-      minScore: String(config.minCycleScore),
-      createdAt: new Date().toISOString()
-    });
+    if (enqueueCoordinationTask) {
+      await enqueueTask("cio-paper-cycle", {
+        cycleId,
+        kind: "paper_cycle",
+        maxTrades: String(config.maxTradesPerCycle),
+        minScore: String(config.minCycleScore),
+        createdAt: new Date().toISOString()
+      });
+    }
 
     await appendAuditEvent(
       auditEvent(

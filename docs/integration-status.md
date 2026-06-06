@@ -23,12 +23,14 @@ Implemented:
 
 - Required client and health checks.
 - Streams via `xAdd`.
+- Stream consumer groups via `xGroupCreate`, `xReadGroup`, and `xAck`.
 - Pub/Sub via `publish`.
 - Audit list.
 - Portfolio state.
 - Idempotency keys.
 - Locks with compare-and-delete Lua release.
 - Ranked opportunity sorted set.
+- Continuous daemon locks and worker queues for research, risk, paper-cycle, postmortem/reconciliation, policy learning, and executive review.
 
 Blocked until Redis is running:
 
@@ -61,7 +63,7 @@ Implemented:
 - Runtime route at `/api/copilotkit`.
 - Provider and sidebar.
 - Readable compressed app state.
-- Actions for trade queries, recommendation explanations, risk-limit requests, opportunity filtering, CIO memos, paper trade approval, and live-gate requests.
+- Actions for trade queries, recommendation explanations, risk-limit requests, opportunity filtering, CIO memos, paper trade approval, daemon ticks, Redis worker runs, learning proposals, reconciliation, executive review, and live-gate requests.
 
 Free local setup:
 

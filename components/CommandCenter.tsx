@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -31,7 +32,33 @@ import { EventFundCopilotActions } from "@/components/copilot/EventFundCopilotAc
 import { Providers } from "@/app/providers";
 
 export function CommandCenter({ initialData }: { initialData: DemoRun }) {
-  const data = initialData;
+  const [data, setData] = useState(initialData);
+  const [lastRefresh, setLastRefresh] = useState(initialData.portfolio.updatedAt);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try {
+        const response = await fetch("/api/demo/run", {
+          method: "POST",
+          cache: "no-store"
+        });
+        if (!response.ok) return;
+        const next = (await response.json()) as DemoRun;
+        if (!active) return;
+        setData(next);
+        setLastRefresh(new Date().toISOString());
+      } catch {
+        // Keep the current dashboard snapshot if a refresh request fails.
+      }
+    };
+    const id = window.setInterval(refresh, 15_000);
+    return () => {
+      active = false;
+      window.clearInterval(id);
+    };
+  }, []);
+
   const blocked = data.opportunities.filter((opportunity) => !opportunity.risk.approved || !opportunity.compliance.approved);
   const approved = data.opportunities.filter((opportunity) => opportunity.risk.approved && opportunity.compliance.approved);
   const activePods = data.pods.filter((pod) => pod.lifecycleStatus === "active" || pod.lifecycleStatus === "pip" || pod.lifecycleStatus === "defense");
@@ -83,6 +110,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
                 Kalshi market data: {data.marketSource}
               </StatusPill>
               <StatusPill tone={blocked.length ? "warning" : "success"}>{blocked.length} blocked</StatusPill>
+              <StatusPill tone="neutral">Refresh {new Date(lastRefresh).toLocaleTimeString()}</StatusPill>
             </div>
             <button className="inline-flex items-center gap-2 rounded-md border border-danger bg-danger px-3 py-2 text-sm font-semibold text-white">
               <StopCircle className="h-4 w-4" />
@@ -147,7 +175,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
 
             <Panel title="Opportunity Ranking" icon={<BookOpenCheck className="h-4 w-4" />}>
               <div className="space-y-3">
-                {data.opportunities.length ? data.opportunities
+                {data.opportunities.length ? [...data.opportunities]
                   .sort((a, b) => b.rankScore - a.rankScore)
                   .map((opportunity) => (
                     <OpportunityRow key={opportunity.id} opportunity={opportunity} />

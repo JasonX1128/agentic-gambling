@@ -3,6 +3,7 @@ import { z } from "zod";
 import { boolEnv, getEnv, livePrerequisites } from "@/lib/config/env";
 import { liveGateDecision } from "@/lib/risk/engine";
 import { appendAuditEvent } from "@/lib/redis/coordination";
+import { operatorAuthResponse } from "@/lib/security/operator-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,8 @@ const gateSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const auth = operatorAuthResponse(req);
+  if (auth) return auth;
   const parsed = gateSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid live gate request.", issues: parsed.error.issues }, { status: 400 });

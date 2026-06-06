@@ -14,6 +14,7 @@ const envSchema = z.object({
   REDIS_URL: z.string().default("redis://localhost:6379"),
   REDIS_NAMESPACE: z.string().default("efos"),
   EVENTFUND_ENV: z.string().default("dev"),
+  OPERATOR_API_TOKEN: z.string().optional(),
   WANDB_API_KEY: z.string().optional(),
   WANDB_ENTITY: z.string().optional(),
   WANDB_PROJECT: z.string().default("eventfund-os-dev"),
@@ -45,7 +46,11 @@ const envSchema = z.object({
   RISK_AGENT_TARGET_SLIPPAGE_BPS: z.coerce.number().default(150),
   RISK_AGENT_MAX_RISK_SCORE: z.coerce.number().default(65),
   PAPER_AGENT_MAX_TRADES_PER_CYCLE: z.coerce.number().default(5),
-  PAPER_AGENT_MIN_CYCLE_SCORE: z.coerce.number().default(0)
+  PAPER_AGENT_MIN_CYCLE_SCORE: z.coerce.number().default(0),
+  PAPER_DAEMON_ENABLED: z.string().default("false"),
+  PAPER_DAEMON_INTERVAL_MS: z.coerce.number().default(300000),
+  PAPER_DAEMON_MAX_TICKS: z.coerce.number().default(1),
+  AGENT_POLICY_AUTOPILOT_APPLY: z.string().default("false")
 });
 
 export function getEnv() {
@@ -92,6 +97,18 @@ export function getPaperCycleConfig() {
   return {
     maxTradesPerCycle: Math.max(1, Math.floor(env.PAPER_AGENT_MAX_TRADES_PER_CYCLE)),
     minCycleScore: env.PAPER_AGENT_MIN_CYCLE_SCORE
+  };
+}
+
+export function getAgentAutomationConfig() {
+  const env = getEnv();
+  return {
+    paperDaemonEnabled: boolEnv(env.PAPER_DAEMON_ENABLED),
+    paperDaemonIntervalMs: Math.max(10_000, Math.floor(env.PAPER_DAEMON_INTERVAL_MS)),
+    paperDaemonMaxTicks: Math.max(1, Math.floor(env.PAPER_DAEMON_MAX_TICKS)),
+    agentPolicyAutopilotApply: boolEnv(env.AGENT_POLICY_AUTOPILOT_APPLY),
+    operatorAuthConfigured: Boolean(env.OPERATOR_API_TOKEN),
+    operatorAuthRequired: env.EVENTFUND_ENV === "production" || Boolean(env.OPERATOR_API_TOKEN)
   };
 }
 

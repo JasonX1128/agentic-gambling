@@ -4,6 +4,12 @@ import type { ActivityEvent, Opportunity, PortfolioSnapshot } from "@/lib/domain
 import { getRedisClient } from "@/lib/redis/client";
 import { redisKeys } from "@/lib/redis/keys";
 
+export type RedisStreamTask = {
+  stream: string;
+  id: string;
+  message: Record<string, string>;
+};
+
 export async function requireRedisForTrading() {
   const client = await getRedisClient();
   await client.ping();
@@ -48,6 +54,49 @@ export async function enqueueTask(streamName: string, task: Record<string, strin
   return client.xAdd(redisKeys.taskStream(streamName), "*", task);
 }
 
+export async function ensureTaskConsumerGroup(streamName: string, groupName: string, startId = "$") {
+  const client = await requireRedisForTrading();
+  try {
+    await client.xGroupCreate(redisKeys.taskStream(streamName), groupName, startId, { MKSTREAM: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("BUSYGROUP")) throw error;
+  }
+}
+
+export async function readTaskBatch(input: {
+  streamName: string;
+  groupName: string;
+  consumerName: string;
+  count?: number;
+  blockMs?: number;
+}): Promise<RedisStreamTask[]> {
+  await ensureTaskConsumerGroup(input.streamName, input.groupName);
+  const client = await requireRedisForTrading();
+  const rows = await client.xReadGroup(
+    input.groupName,
+    input.consumerName,
+    [{ key: redisKeys.taskStream(input.streamName), id: ">" }],
+    {
+      COUNT: input.count ?? 10,
+      BLOCK: input.blockMs ?? 0
+    }
+  );
+  if (!rows) return [];
+  return rows.flatMap((stream) =>
+    stream.messages.map((message) => ({
+      stream: input.streamName,
+      id: message.id,
+      message: normalizeStreamMessage(message.message)
+    }))
+  );
+}
+
+export async function ackTask(streamName: string, groupName: string, taskId: string) {
+  const client = await requireRedisForTrading();
+  return client.xAck(redisKeys.taskStream(streamName), groupName, taskId);
+}
+
 export async function appendAuditEvent(event: ActivityEvent) {
   const client = await requireRedisForTrading();
   await client.lPush(redisKeys.audit(), JSON.stringify(event));
@@ -87,4 +136,10 @@ export async function saveOpportunity(opportunity: Opportunity) {
     score: opportunity.rankScore,
     value: opportunity.id
   });
+}
+
+function normalizeStreamMessage(message: Record<string, string | Buffer>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(message).map(([key, value]) => [key, Buffer.isBuffer(value) ? value.toString("utf8") : String(value)])
+  );
 }

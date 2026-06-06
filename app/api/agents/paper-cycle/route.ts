@@ -1,10 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { runPaperCycle } from "@/lib/agents/paper-cycle";
+import { operatorAuthResponse } from "@/lib/security/operator-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const auth = operatorAuthResponse(req);
+  if (auth) return auth;
   try {
     return NextResponse.json(await runPaperCycle());
   } catch (error) {
