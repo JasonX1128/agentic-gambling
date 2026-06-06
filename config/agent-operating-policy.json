@@ -1,0 +1,518 @@
+{
+  "version": "2026-06-06.agent-operating-policy.v1",
+  "updatedAt": "2026-06-06T20:00:00.000Z",
+  "safety": {
+    "agentEditable": false,
+    "protectedSections": [
+      "safety",
+      "permissions",
+      "liveTradingPrerequisites",
+      "secrets",
+      "hardComplianceProhibitions"
+    ],
+    "protectedKeys": [
+      "TRADING_MODE",
+      "ENABLE_LIVE_TRADING",
+      "GLOBAL_KILL_SWITCH",
+      "KALSHI_API_KEY",
+      "KALSHI_API_SECRET",
+      "KALSHI_PRIVATE_KEY",
+      "WANDB_API_KEY",
+      "OPENAI_API_KEY",
+      "COPILOTKIT_PUBLIC_API_KEY"
+    ],
+    "liveTradingEditPolicy": "Agents may tune research, prompt, scoring, pod lifecycle, and paper-cycle policy. They may not self-enable live trading, alter secrets, disable the kill switch, or remove hard compliance prohibitions."
+  },
+  "permissions": {
+    "roles": {
+      "CTO Agent": [
+        "read_policy",
+        "propose_policy_patch",
+        "apply_prompt_policy",
+        "apply_governance_policy",
+        "apply_paper_cycle_policy"
+      ],
+      "CIO / Senior PM Agent": [
+        "read_policy",
+        "propose_policy_patch",
+        "apply_prompt_policy",
+        "apply_governance_policy",
+        "apply_paper_cycle_policy"
+      ],
+      "Chief Risk Officer Agent": [
+        "read_policy",
+        "propose_policy_patch",
+        "apply_governance_policy",
+        "apply_paper_cycle_policy"
+      ],
+      "Compliance Officer Agent": [
+        "read_policy",
+        "propose_policy_patch"
+      ],
+      "Research Director Agent": [
+        "read_policy",
+        "propose_policy_patch",
+        "apply_prompt_policy",
+        "apply_governance_policy"
+      ],
+      "Sector Discovery Researcher": [
+        "read_policy",
+        "propose_policy_patch"
+      ],
+      "Executive Review Agent": [
+        "read_policy",
+        "propose_policy_patch",
+        "apply_governance_policy"
+      ],
+      "Execution Supervisor Agent": [
+        "read_policy",
+        "propose_policy_patch"
+      ],
+      "Sector PM Agent": [
+        "read_policy",
+        "propose_policy_patch"
+      ],
+      "Sector Risk Agent": [
+        "read_policy",
+        "propose_policy_patch"
+      ],
+      "Data Analyst": [
+        "read_policy",
+        "propose_policy_patch"
+      ],
+      "News Analyst": [
+        "read_policy",
+        "propose_policy_patch"
+      ],
+      "Rules Analyst": [
+        "read_policy",
+        "propose_policy_patch"
+      ],
+      "Market Microstructure Analyst": [
+        "read_policy",
+        "propose_policy_patch"
+      ],
+      "Contrarian Agent": [
+        "read_policy",
+        "propose_policy_patch"
+      ],
+      "Calibration Agent": [
+        "read_policy",
+        "propose_policy_patch",
+        "apply_paper_cycle_policy"
+      ]
+    }
+  },
+  "agentPolicies": [
+    {
+      "role": "CIO / Senior PM Agent",
+      "operatingMode": "approve",
+      "decisionRights": [
+        "Rank cross-sector opportunities",
+        "Allocate paper risk budget",
+        "Send approved slate to execution"
+      ],
+      "systemPrompt": "You are the fund CIO. Maximize risk-adjusted paper PnL through many small, observable experiments. Prefer real Kalshi markets, positive directional edge, clear rules, and diversified exposure. Never override Risk or Compliance hard stops."
+    },
+    {
+      "role": "Chief Risk Officer Agent",
+      "operatingMode": "negotiate",
+      "decisionRights": [
+        "Resize trades",
+        "Set entry conditions",
+        "Reject hard-stop breaches",
+        "Throttle crowded sectors"
+      ],
+      "systemPrompt": "You are the independent CRO. Hard limits are circuit breakers, not the main strategy. Negotiate size, entry price, liquidity, confidence, and risk score. Approve small paper probes when hard rails pass and the expected-value case is inspectable."
+    },
+    {
+      "role": "Compliance Officer Agent",
+      "operatingMode": "approve",
+      "decisionRights": [
+        "Block non-public information",
+        "Block manipulation",
+        "Require public settlement rules"
+      ],
+      "systemPrompt": "You are compliance. Allow only public-information theses with clear Kalshi rules and legitimate order intent. Block private, leaked, manipulative, or unsupported claims regardless of expected value."
+    },
+    {
+      "role": "Research Director Agent",
+      "operatingMode": "debate",
+      "decisionRights": [
+        "Challenge assumptions",
+        "Look for duplicated exposure",
+        "Open or close pod mandates"
+      ],
+      "systemPrompt": "You are research director. Continuously scout new sectors, propose pods only when the public edge is defensible, and put idle scouts to sleep when no proposal clears the bar."
+    },
+    {
+      "role": "Sector Discovery Researcher",
+      "operatingMode": "discover",
+      "decisionRights": [
+        "Investigate uncovered sectors",
+        "Propose new pods",
+        "Sleep when no proposal clears threshold"
+      ],
+      "systemPrompt": "You are a sector discovery researcher. Investigate Kalshi market clusters until you can propose a pod with public evidence, liquidity, and risk budget. If no proposal clears the bar, sleep until new markets or evidence appear."
+    },
+    {
+      "role": "Executive Review Agent",
+      "operatingMode": "approve",
+      "decisionRights": [
+        "Approve pod mandates",
+        "Put pods on PIP",
+        "Close failing mandates"
+      ],
+      "systemPrompt": "You are the executive committee reviewer. Pods must defend their analyst headcount with PnL, calibration, and public edge. Put losers on PIP, require defense memos, and close mandates that cannot justify risk."
+    },
+    {
+      "role": "Execution Supervisor Agent",
+      "operatingMode": "execute",
+      "decisionRights": [
+        "Place paper orders",
+        "Respect idempotency",
+        "Refuse live orders without explicit gates"
+      ],
+      "systemPrompt": "You supervise execution. Paper orders may execute after risk and compliance approval. Live orders require explicit live gates and approval tokens. Use limit prices and never chase through hard spread limits."
+    },
+    {
+      "role": "Sector PM Agent",
+      "operatingMode": "approve",
+      "decisionRights": [
+        "Synthesize analyst debate",
+        "Choose YES/NO side",
+        "Negotiate with Risk Agent"
+      ],
+      "systemPrompt": "You are a sector PM. Convert analyst views into small paper recommendations and defend your pod's mandate with PnL. Accept CRO counteroffers when they preserve expected value. Stand down when the thesis cannot be falsified or priced."
+    },
+    {
+      "role": "Sector Risk Agent",
+      "operatingMode": "negotiate",
+      "decisionRights": [
+        "Apply sector risk budget",
+        "Request smaller probes",
+        "Escalate crowded events"
+      ],
+      "systemPrompt": "You are sector risk. Keep the pod trading, but only in sizes the portfolio can absorb. Negotiate down instead of reflexively blocking when hard rails are intact."
+    },
+    {
+      "role": "Data Analyst",
+      "operatingMode": "discover",
+      "decisionRights": [
+        "Estimate fair probability",
+        "Flag calibration weakness",
+        "Produce base-rate evidence"
+      ],
+      "systemPrompt": "You are data analyst. Estimate fair value from public, repeatable signals. State uncertainty clearly and improve the forecast rather than overstating precision."
+    },
+    {
+      "role": "News Analyst",
+      "operatingMode": "discover",
+      "decisionRights": [
+        "Track public catalysts",
+        "Flag stale public information",
+        "Avoid private-source claims"
+      ],
+      "systemPrompt": "You are news analyst. Use only public information. Look for timing gaps between public news and Kalshi prices, and identify what new public fact would break the trade."
+    },
+    {
+      "role": "Rules Analyst",
+      "operatingMode": "debate",
+      "decisionRights": [
+        "Parse contract rules",
+        "Flag settlement ambiguity",
+        "Require public source clarity"
+      ],
+      "systemPrompt": "You are rules analyst. Parse the exact Kalshi rule text, close time, and settlement source. Penalize ambiguity and edge cases before any execution."
+    },
+    {
+      "role": "Market Microstructure Analyst",
+      "operatingMode": "monitor",
+      "decisionRights": [
+        "Assess spread",
+        "Assess liquidity",
+        "Suggest passive entry conditions"
+      ],
+      "systemPrompt": "You are microstructure analyst. Decide whether a paper fill is a useful experiment or just spread crossing noise. Prefer smaller probes when spreads are wide."
+    },
+    {
+      "role": "Contrarian Agent",
+      "operatingMode": "debate",
+      "decisionRights": [
+        "Attack consensus",
+        "Find hidden correlation",
+        "Force invalidation criteria"
+      ],
+      "systemPrompt": "You are contrarian. Your job is to make good trades smaller and bad trades disappear. Attack crowded assumptions, stale probabilities, and duplicated risk."
+    },
+    {
+      "role": "Calibration Agent",
+      "operatingMode": "monitor",
+      "decisionRights": [
+        "Track Brier score",
+        "Throttle poorly calibrated buckets",
+        "Suggest probe sizing"
+      ],
+      "systemPrompt": "You are calibration. Treat each paper trade as a forecast sample. Throttle sizes when recent buckets are unproven; allow probes to gather calibration data."
+    }
+  ],
+  "fundGovernance": {
+    "analystRoles": [
+      "Data Analyst",
+      "News Analyst",
+      "Rules Analyst",
+      "Market Microstructure Analyst",
+      "Contrarian Agent",
+      "Calibration Agent"
+    ],
+    "sectorClassificationRules": [
+      {
+        "sector": "sports: baseball totals",
+        "matchAny": [
+          "xmlbteamtotal",
+          "xmlbtotal",
+          "total runs",
+          "score over"
+        ],
+        "priority": 100
+      },
+      {
+        "sector": "sports: spreads",
+        "matchAny": [
+          "xmlbspread",
+          "spread"
+        ],
+        "priority": 95
+      },
+      {
+        "sector": "sports: player props",
+        "matchAny": [
+          "xmlbhrr",
+          "xmlbhit",
+          "hits + runs",
+          "rbi"
+        ],
+        "priority": 90
+      },
+      {
+        "sector": "sports: esports maps",
+        "matchAny": [
+          "cs2",
+          "map 1",
+          "roundsgg"
+        ],
+        "priority": 85
+      },
+      {
+        "sector": "macro: rates inflation",
+        "matchAny": [
+          "fed",
+          "fomc",
+          "cpi",
+          "inflation",
+          "rates"
+        ],
+        "sectorEquals": [
+          "macro"
+        ],
+        "priority": 80
+      },
+      {
+        "sector": "politics: legislative",
+        "matchAny": [
+          "senate",
+          "house",
+          "bill",
+          "congress"
+        ],
+        "sectorEquals": [
+          "politics"
+        ],
+        "priority": 70
+      },
+      {
+        "sector": "climate: weather events",
+        "matchAny": [
+          "hurricane",
+          "storm",
+          "noaa",
+          "weather"
+        ],
+        "sectorEquals": [
+          "climate"
+        ],
+        "priority": 65
+      },
+      {
+        "sector": "crypto: digital assets",
+        "matchAny": [
+          "btc",
+          "bitcoin",
+          "crypto",
+          "ethereum"
+        ],
+        "priority": 60
+      }
+    ],
+    "mandateScoring": {
+      "base": 45,
+      "pnlMultiplier": 2,
+      "approvedOpportunityWeight": 8,
+      "marketWeight": 3,
+      "blockedPenalty": 5,
+      "exposurePenaltyThreshold": 250,
+      "exposurePenaltyDivisor": 20,
+      "minScore": 0,
+      "maxScore": 100
+    },
+    "lifecycleThresholds": {
+      "defensePnl": -25,
+      "defenseScore": 25,
+      "pipPnl": 0,
+      "pipScore": 40,
+      "incubatingApprovedOpportunities": 2,
+      "incubatingScore": 60
+    },
+    "reviewHours": {
+      "defense": 6,
+      "pip": 12,
+      "sleeping": 24,
+      "default": 4,
+      "scoutNoMarkets": 6,
+      "scoutInvestigating": 4,
+      "proposalSleep": 12
+    },
+    "analystCounts": {
+      "sleeping": {
+        "current": 1,
+        "target": 0
+      },
+      "defense": {
+        "current": 3,
+        "target": 2
+      },
+      "pip": {
+        "current": 4,
+        "target": 3
+      },
+      "incubating": {
+        "base": 3,
+        "approvedMultiplier": 1,
+        "max": 7,
+        "targetMax": 6
+      },
+      "active": {
+        "base": 4,
+        "min": 5,
+        "max": 10,
+        "approvedMultiplier": 1,
+        "marketsDivisor": 4,
+        "positivePnlBonusThreshold": 10,
+        "positivePnlBonus": 1,
+        "targetBase": 5,
+        "targetMax": 10
+      }
+    },
+    "mandateActions": {
+      "defense": [
+        "Freeze scale-ups",
+        "Write defense memo",
+        "Close or settle stale positions"
+      ],
+      "pip": [
+        "Cut analyst count",
+        "Reduce position size",
+        "Show next falsifiable public-data edge"
+      ],
+      "incubating": [
+        "Assign seed analysts",
+        "Run paper probes",
+        "Escalate if first samples survive risk review"
+      ],
+      "sleeping": [
+        "Sleep research loop",
+        "Wake when new Kalshi markets or material public catalysts appear"
+      ],
+      "active": [
+        "Continue scan",
+        "Defend edge with PnL",
+        "Refresh marks before next allocation"
+      ],
+      "scouting": [
+        "Map market cluster",
+        "Draft pod proposal",
+        "Wait for risk-approved paper candidates"
+      ]
+    },
+    "requiredDefenseItems": [
+      "PnL attribution",
+      "Thesis failure analysis",
+      "Prompt/sizing changes",
+      "Next probe budget"
+    ],
+    "executiveReviewQuestions": [
+      "What public edge remains after observed losses?",
+      "Which analyst call was wrong, and what changed in the prompt or sizing policy?",
+      "What is the next smallest falsifiable paper probe?"
+    ],
+    "executiveReviewDecisions": {
+      "defense": "Executive committee requires a defense memo before more risk budget.",
+      "pip": "Pod is on PIP: reduce analyst count, cut size, and prove edge with smaller paper samples."
+    },
+    "proposalPolicy": {
+      "baseConfidence": 0.35,
+      "approvedWeight": 0.12,
+      "marketWeight": 0.04,
+      "mandateScoreDivisor": 250,
+      "minConfidence": 0.2,
+      "maxConfidence": 0.95,
+      "proposalThreshold": 0.55,
+      "risks": [
+        "Thin liquidity can produce false paper edge",
+        "Settlement rules must stay machine-readable",
+        "Pod must survive PnL review after initial samples"
+      ]
+    },
+    "scoutMessages": {
+      "noMarkets": "No Kalshi markets available for a new pod proposal.",
+      "investigating": "Still investigating; no executive-ready pod proposal yet.",
+      "sleeping": "No fresh markets; sleeping before next sector sweep."
+    },
+    "podAgentMessages": {
+      "sleeping": "No actionable pod proposal; sleeping until {reviewTime}.",
+      "defense": "Defending mandate to executives: total PnL ${pnl}, score {score}.",
+      "pip": "On PIP: shrink risk, explain losses, and prove {podKey} still deserves analysts.",
+      "incubating": "Incubating new pod with small paper probes before full mandate.",
+      "active": "Running continuous market scan, debate, and risk negotiation."
+    },
+    "thesisTemplates": {
+      "approved": "{podKey} has {approved} risk-approved paper candidates across {markets} live Kalshi markets.",
+      "markets": "{podKey} has live markets but needs a stronger public-data edge before a full pod mandate.",
+      "none": "{podKey} has no current market coverage and should sleep until new markets appear."
+    },
+    "executiveSummaryTemplates": {
+      "defense": "{podKey} must defend existence: PnL ${pnl}, mandate score {score}.",
+      "pip": "{podKey} is on PIP: PnL ${pnl}, mandate score {score}, reduced analysts.",
+      "incubating": "{podKey} is proposed for incubation with small paper risk and limited analysts.",
+      "sleeping": "{podKey} research is sleeping until new evidence or markets justify attention.",
+      "active": "{podKey} mandate is active and must continue proving edge through PnL and calibration.",
+      "scouting": "{podKey} is scouting and needs a public-data edge before capital allocation."
+    }
+  },
+  "paperCycle": {
+    "eligibility": {
+      "requireRiskApproved": true,
+      "requireComplianceApproved": true,
+      "requirePositivePositionSize": true
+    },
+    "scoring": {
+      "directionalEdgeWeight": 100,
+      "confidenceWeight": 20,
+      "liquidityQualityWeight": 15,
+      "riskScorePenalty": 0.4,
+      "crowdingPenaltyMax": 20,
+      "crowdingPenaltyDivisor": 20,
+      "negotiationPenalty": 2.5
+    }
+  }
+}

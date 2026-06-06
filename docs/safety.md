@@ -35,6 +35,17 @@ Per order, the execution route also requires:
 
 CopilotKit can request live-gate changes, but it cannot directly switch the server into live mode. Environment variables and server checks decide the effective mode.
 
+## Agent-Editable Policy Boundaries
+
+The dynamic operating policy lives in `config/agent-operating-policy.json`. Agents can tune prompts, decision rights, sector classification, pod lifecycle thresholds, analyst headcount, scout sleep cadence, proposal scoring, mandate actions, and CIO paper-cycle scoring through `GET/POST /api/agents/policy` or CopilotKit tools.
+
+Policy mutation has permission levels:
+
+- Most trading agents can read and propose policy changes.
+- CIO, Research Director, CRO, Executive Review, and Calibration roles can apply only the sections they are allowed to own.
+- Policy writes require Redis auditability; if Redis is down, the write is blocked.
+- Agents cannot edit live-trading environment flags, Kalshi/W&B/Copilot secrets, global kill switch state, permissions, or hard compliance prohibitions.
+
 ## Compliance Blocks
 
 The Compliance Officer blocks trades involving:

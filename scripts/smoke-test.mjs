@@ -7,9 +7,12 @@ const requiredFiles = [
   "lib/llm/health.ts",
   "lib/agents/paper-cycle.ts",
   "lib/agents/fund-management.ts",
+  "lib/agents/operating-policy.ts",
+  "config/agent-operating-policy.json",
   "app/api/copilotkit/[[...slug]]/route.ts",
   "app/api/agents/paper-cycle/route.ts",
   "app/api/agents/governance/route.ts",
+  "app/api/agents/policy/route.ts",
   "app/api/portfolio/mark-to-market/route.ts",
   "app/api/trades/[id]/close/route.ts",
   "app/api/trades/[id]/settle/route.ts",
@@ -34,6 +37,8 @@ const config = fs.readFileSync("lib/config/env.ts", "utf8");
 const copilotRoute = fs.readFileSync("app/api/copilotkit/[[...slug]]/route.ts", "utf8");
 const copilotActions = fs.readFileSync("components/copilot/EventFundCopilotActions.tsx", "utf8");
 const portfolio = fs.readFileSync("lib/portfolio/engine.ts", "utf8");
+const operatingPolicy = fs.readFileSync("lib/agents/operating-policy.ts", "utf8");
+const policyConfig = fs.readFileSync("config/agent-operating-policy.json", "utf8");
 const approveStart = execution.indexOf("export async function approvePaperTrade");
 const liveStart = execution.indexOf("export async function executeLiveTrade");
 const approveBlock = execution.slice(approveStart, liveStart);
@@ -54,7 +59,10 @@ const checks = [
   ["CopilotKit action surface includes paper close", copilotActions.includes("closePaperPosition")],
   ["CopilotKit action surface includes paper settlement", copilotActions.includes("settlePaperPosition")],
   ["CopilotKit action surface includes pod governance query", copilotActions.includes("queryPodGovernance")],
-  ["portfolio accounting separates settled and unrealized PnL", portfolio.includes("settledPnl") && portfolio.includes("unrealizedPnl")]
+  ["CopilotKit action surface includes operating policy tools", copilotActions.includes("readAgentOperatingPolicy") && copilotActions.includes("applyAgentPolicyPatch")],
+  ["portfolio accounting separates settled and unrealized PnL", portfolio.includes("settledPnl") && portfolio.includes("unrealizedPnl")],
+  ["agent operating policy file protects live gates", policyConfig.includes("GLOBAL_KILL_SWITCH") && policyConfig.includes("liveTradingEditPolicy")],
+  ["agent operating policy enforces section permissions", operatingPolicy.includes("requiredPermissionForSection") && operatingPolicy.includes("apply_governance_policy")]
 ];
 
 for (const [label, ok] of checks) {

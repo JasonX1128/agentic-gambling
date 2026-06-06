@@ -1,6 +1,7 @@
 import type { DemoRun, Opportunity } from "@/lib/domain";
 import { agentHierarchy, buildDemoOpportunities, demoActivity } from "@/lib/data/seeds";
 import { buildFundOperatingState } from "@/lib/agents/fund-management";
+import { policySummary } from "@/lib/agents/operating-policy";
 import { getMarkets } from "@/lib/services/market-service";
 import { getPortfolioSnapshot, markPortfolioToMarket } from "@/lib/portfolio/engine";
 import { staticIntegrationStatus } from "@/lib/config/env";
@@ -36,6 +37,7 @@ export async function runDemoWorkflow(): Promise<DemoRun> {
       researchScouts: fundState.researchScouts,
       podProposals: fundState.podProposals,
       executiveReviews: fundState.executiveReviews,
+      policySummary: policySummary(),
       integrationStatus: status
     };
   });

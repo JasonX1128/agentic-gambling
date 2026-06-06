@@ -7,14 +7,15 @@ EventFund OS uses typed modules inside a single Next.js application.
 1. Kalshi adapter fetches markets and order books using signed REST requests when credentials are present.
 2. Market data is normalized into `Market`.
 3. Sector pods classify markets and produce analyst debates.
-4. Quant scoring computes market probability, fair probability, EV, confidence, liquidity, downside, and calibration bucket.
-5. Risk and compliance engines evaluate the opportunity.
-6. CIO memo and opportunity tables expose recommendations.
-7. Execution supervisor sends paper orders to Redis-backed portfolio accounting by default.
-8. Live orders are submitted to Kalshi only after live prerequisites and per-order approval pass.
-9. Redis stores audit events, paper portfolio, idempotency keys, task streams, and Pub/Sub events.
-10. Weave traces meaningful lifecycle decisions when W&B credentials are present.
-11. CopilotKit exposes safe actions for querying, explaining, filtering, memos, paper approval, and live-gate requests.
+4. Agent prompts, pod classification, lifecycle thresholds, analyst counts, scout cadence, and paper-cycle scoring are loaded from `config/agent-operating-policy.json`.
+5. Quant scoring computes market probability, fair probability, EV, confidence, liquidity, downside, and calibration bucket.
+6. Risk and compliance engines evaluate the opportunity.
+7. CIO memo and opportunity tables expose recommendations.
+8. Execution supervisor sends paper orders to Redis-backed portfolio accounting by default.
+9. Live orders are submitted to Kalshi only after live prerequisites and per-order approval pass.
+10. Redis stores audit events, paper portfolio, idempotency keys, task streams, and Pub/Sub events.
+11. Weave traces meaningful lifecycle decisions when W&B credentials are present.
+12. CopilotKit exposes safe actions for querying, explaining, filtering, memos, paper approval, live-gate requests, and permissioned operating-policy changes.
 
 ## Module Boundaries
 
@@ -26,7 +27,8 @@ EventFund OS uses typed modules inside a single Next.js application.
 - `lib/compliance`: Public information and rule ambiguity policy checks.
 - `lib/portfolio`: Paper portfolio accounting.
 - `lib/execution`: Paper fills and gated live orders.
-- `lib/agents`: Trading-agent swarm, sector pods, CIO synthesis.
+- `lib/agents`: Trading-agent swarm, sector pods, CIO synthesis, and file-backed operating-policy ACL.
+- `config/agent-operating-policy.json`: Agent-editable strategy, prompt, governance, and paper-cycle policy. Safety gates and secrets remain outside agent write access.
 - `components`: Operations UI.
 
 ## Redis Keys

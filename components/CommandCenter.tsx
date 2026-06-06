@@ -44,6 +44,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
     ["Risk", ShieldAlert, "risk-panel"],
     ["Ledger", WalletCards, "ledger-panel"],
     ["Audit", ClipboardCheck, "execution-panel"],
+    ["Policy", Gauge, "policy-panel"],
     ["Settings", Gauge, "settings-panel"]
   ];
   const scrollToSection = (targetId: string) => {
@@ -185,6 +186,35 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
                   {data.integrationStatus.map((status) => (
                     <IntegrationRow key={status.name} status={status} />
                   ))}
+                </div>
+              </Panel>
+
+              <Panel title="Agent Operating Policy" icon={<Gauge className="h-4 w-4" />} id="policy-panel">
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between gap-2">
+                    <span>Policy file</span>
+                    <span className="max-w-[220px] truncate font-mono text-slate-600">{data.policySummary.configPath}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Version</span>
+                    <span className="font-mono text-slate-600">{data.policySummary.version}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Editable sections</span>
+                    <span className="font-mono text-slate-600">{data.policySummary.editableSections.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Role policies</span>
+                    <span className="font-mono text-slate-600">{data.policySummary.agentPolicyCount}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Sector rules</span>
+                    <span className="font-mono text-slate-600">{data.policySummary.sectorRuleCount}</span>
+                  </div>
+                  <div className="rounded-md border border-slate-200 bg-slate-50 p-2 text-slate-600">
+                    Agents can edit {data.policySummary.editableSections.join(", ")} through permissioned actions. Live gates,
+                    secrets, kill switch state, and hard compliance rails stay protected.
+                  </div>
                 </div>
               </Panel>
             </div>

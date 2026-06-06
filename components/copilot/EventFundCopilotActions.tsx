@@ -80,7 +80,8 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
       })),
       researchScouts: data.researchScouts,
       podProposals: data.podProposals,
-      executiveReviews: data.executiveReviews
+      executiveReviews: data.executiveReviews,
+      policySummary: data.policySummary
     } as unknown as JsonSerializable;
 
   useAgentContext({
@@ -242,6 +243,47 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
     description: "Inspect dynamic pod mandates, research scouts, pod proposals, and executive PIP/defense reviews.",
     parameters: z.object({}),
     handler: async (_args, { signal }) => apiJson("/api/agents/governance", undefined, signal)
+  });
+
+  useFrontendTool({
+    name: "readAgentOperatingPolicy",
+    description: "Read the file-backed agent operating policy, editable sections, permissions, prompts, pod rules, and CIO paper-cycle scoring.",
+    parameters: z.object({}),
+    handler: async (_args, { signal }) => apiJson("/api/agents/policy", undefined, signal)
+  });
+
+  useFrontendTool({
+    name: "proposeAgentPolicyPatch",
+    description:
+      "Propose a JSON replacement for one editable operating-policy section. This records an audited proposal but does not write the policy file.",
+    parameters: z.object({
+      actorRole: z.string(),
+      section: z.enum(["agentPolicies", "fundGovernance", "paperCycle"]),
+      reason: z.string(),
+      valueJson: z.string()
+    }),
+    handler: async ({ valueJson, ...args }, { signal }) =>
+      apiJson("/api/agents/policy", {
+        method: "POST",
+        body: JSON.stringify({ ...args, action: "propose", value: JSON.parse(valueJson) })
+      }, signal)
+  });
+
+  useFrontendTool({
+    name: "applyAgentPolicyPatch",
+    description:
+      "Apply a JSON replacement for one editable operating-policy section when the actor role has permission and Redis audit succeeds.",
+    parameters: z.object({
+      actorRole: z.string(),
+      section: z.enum(["agentPolicies", "fundGovernance", "paperCycle"]),
+      reason: z.string(),
+      valueJson: z.string()
+    }),
+    handler: async ({ valueJson, ...args }, { signal }) =>
+      apiJson("/api/agents/policy", {
+        method: "POST",
+        body: JSON.stringify({ ...args, action: "apply", value: JSON.parse(valueJson) })
+      }, signal)
   });
 
   useFrontendTool({

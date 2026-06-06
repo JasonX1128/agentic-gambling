@@ -393,6 +393,20 @@ export type SectorPod = {
   mandate: PodMandate;
 };
 
+export type AgentOperatingPolicySummary = {
+  version: string;
+  updatedAt: string;
+  configPath: string;
+  editableSections: string[];
+  protectedSections: string[];
+  protectedKeys: string[];
+  liveTradingEditPolicy: string;
+  permissionedRoles: number;
+  agentPolicyCount: number;
+  sectorRuleCount: number;
+  paperCycleScoring: Record<string, number>;
+};
+
 export type DemoRun = {
   mode: TradingMode;
   marketSource: "kalshi" | "demo";
@@ -406,5 +420,6 @@ export type DemoRun = {
   researchScouts: ResearchScout[];
   podProposals: PodProposal[];
   executiveReviews: ExecutiveReview[];
+  policySummary: AgentOperatingPolicySummary;
   integrationStatus: IntegrationStatus[];
 };
