@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  background: #eef1f5;
+  color: #111315;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #eef1f5;
+  color: #111315;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.metric-number {
+  font-variant-numeric: tabular-nums;
+}
