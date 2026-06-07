@@ -160,7 +160,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
             </button>
           </header>
 
-          <div id="ledger-panel" className="scroll-mt-4 grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] gap-3 border-b border-line bg-panel px-5 py-4">
+          <div id="ledger-panel" className="scroll-mt-4 grid grid-cols-[repeat(auto-fit,minmax(156px,1fr))] gap-3 border-b border-line bg-panel px-5 py-4">
             <Metric label="Net Liq" value={`$${data.portfolio.netLiquidationValue.toLocaleString()}`} />
             <Metric label="Total P&L" value={`$${data.portfolio.totalPnl.toLocaleString()}`} tone={data.portfolio.totalPnl >= 0 ? "positive" : "negative"} />
             <Metric label="Unrealized" value={`$${data.portfolio.unrealizedPnl.toLocaleString()}`} tone={data.portfolio.unrealizedPnl >= 0 ? "positive" : "negative"} />
@@ -288,14 +288,14 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-[1fr_1fr] gap-4 px-5 pb-5">
-            <Panel title="Trading Agent Swarm" icon={<CircuitBoard className="h-4 w-4" />} id="agents-panel">
-              <div className="mb-4 grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 gap-4 px-5 pb-5">
+            <Panel title="Trading Agent Swarm" icon={<CircuitBoard className="h-4 w-4" />} id="agents-panel" className="col-span-2">
+              <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-2">
                 {data.fundAgents.map((agent) => (
                   <AgentCard key={agent.id} agent={agent} />
                 ))}
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
                 {data.pods.map((pod) => (
                   <PodCard key={pod.id} pod={pod} />
                 ))}
@@ -342,34 +342,36 @@ function PodCard({ pod }: { pod: SectorPod }) {
           ? "neutral"
           : "info";
   return (
-    <div className="rounded-md border border-line bg-white p-3 text-xs">
+    <div className="min-w-0 overflow-hidden rounded-md border border-line bg-white p-3 text-xs">
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="font-semibold uppercase">{pod.sector}</div>
-          <div className="mt-1 text-slate-600">{pod.mandate.executiveSummary}</div>
+        <div className="min-w-0">
+          <div className="break-words font-semibold uppercase">{pod.sector}</div>
+          <div className="mt-1 break-words text-slate-600">{pod.mandate.executiveSummary}</div>
         </div>
-        <StatusPill tone={tone}>{pod.lifecycleStatus}</StatusPill>
+        <span className="shrink-0">
+          <StatusPill tone={tone}>{pod.lifecycleStatus}</StatusPill>
+        </span>
       </div>
-      <div className="mt-3 grid grid-cols-5 gap-2">
+      <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(64px,1fr))] gap-2">
         <Cell label="Analysts" value={`${pod.mandate.analystCount}/${pod.mandate.targetAnalystCount}`} />
         <Cell label="Score" value={String(pod.mandate.mandateScore)} />
         <Cell label="PnL" value={`$${pod.mandate.totalPnl}`} />
         <Cell label="Markets" value={String(pod.activeMarkets)} />
         <Cell label="Approved" value={String(pod.approvedCandidates)} />
       </div>
-      <div className="mt-2 border-t border-slate-100 pt-2 text-slate-600">{pod.mandate.thesis}</div>
+      <div className="mt-2 break-words border-t border-slate-100 pt-2 text-slate-600">{pod.mandate.thesis}</div>
       <div className="mt-2 grid grid-cols-2 gap-2 text-slate-500">
-        <div>Review: {new Date(pod.mandate.nextReviewAt).toLocaleTimeString()}</div>
-        <div>Cadence: {pod.mandate.reviewCadence}</div>
+        <div className="min-w-0 break-words">Review: {new Date(pod.mandate.nextReviewAt).toLocaleTimeString()}</div>
+        <div className="min-w-0 break-words">Cadence: {pod.mandate.reviewCadence}</div>
       </div>
       {pod.mandate.requiredDefense.length ? (
-        <div className="mt-2 rounded-md border border-warning/30 bg-amber-50 p-2 text-warning">
+        <div className="mt-2 break-words rounded-md border border-warning/30 bg-amber-50 p-2 text-warning">
           Defense required: {pod.mandate.requiredDefense.join(", ")}
         </div>
       ) : null}
       <div className="mt-2 flex flex-wrap gap-1">
         {pod.mandate.actions.slice(0, 3).map((action) => (
-          <span key={action} className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">
+          <span key={action} className="max-w-full break-words rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">
             {action}
           </span>
         ))}
@@ -699,18 +701,20 @@ function PortfolioPanel({ portfolio }: { portfolio: PortfolioSnapshot }) {
 
 function AgentCard({ agent }: { agent: AgentNode }) {
   return (
-    <div className="rounded-md border border-line bg-slate-50 p-2 text-xs">
-      <div className="flex items-center justify-between gap-2">
+    <div className="min-w-0 overflow-hidden rounded-md border border-line bg-slate-50 p-2 text-xs">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate font-semibold text-slate-800">{agent.name}</div>
+          <div className="line-clamp-2 break-words font-semibold leading-4 text-slate-800">{agent.name}</div>
           <div className="font-mono text-[11px] text-slate-500">{agent.operatingMode ?? "debate"}</div>
         </div>
-        <StatusPill tone={agentStatusTone(agent.status)}>
-          {agent.status}
-        </StatusPill>
+        <span className="shrink-0">
+          <StatusPill tone={agentStatusTone(agent.status)}>
+            {agent.status}
+          </StatusPill>
+        </span>
       </div>
-      <div className="mt-2 line-clamp-2 text-slate-600">{agent.systemPrompt}</div>
-      <div className="mt-2 border-t border-slate-200 pt-2 text-slate-500">
+      <div className="mt-2 line-clamp-2 break-words text-slate-600">{agent.systemPrompt}</div>
+      <div className="mt-2 break-words border-t border-slate-200 pt-2 text-slate-500">
         {(agent.decisionRights ?? []).slice(0, 2).join(" | ")}
       </div>
     </div>
@@ -727,23 +731,23 @@ function agentStatusTone(status: AgentNode["status"]): "success" | "warning" | "
 
 function Metric({ label, value, tone }: { label: string; value: string; tone?: "positive" | "negative" }) {
   return (
-    <div className="rounded-md border border-line bg-white px-3 py-2">
-      <div className="text-xs uppercase text-slate-500">{label}</div>
-      <div className={`metric-number mt-1 font-mono text-xl font-semibold ${tone === "positive" ? "text-healthy" : tone === "negative" ? "text-danger" : ""}`}>
+    <div className="min-w-0 overflow-hidden rounded-md border border-line bg-white px-3 py-2">
+      <div className="truncate text-xs uppercase text-slate-500">{label}</div>
+      <div className={`metric-number mt-1 break-all font-mono text-[1.05rem] font-semibold leading-6 ${tone === "positive" ? "text-healthy" : tone === "negative" ? "text-danger" : ""}`}>
         {value}
       </div>
     </div>
   );
 }
 
-function Panel({ title, icon, children, id }: { title: string; icon: React.ReactNode; children: React.ReactNode; id?: string }) {
+function Panel({ title, icon, children, id, className }: { title: string; icon: React.ReactNode; children: React.ReactNode; id?: string; className?: string }) {
   return (
-    <section id={id} className="min-h-0 scroll-mt-4 rounded-md border border-line bg-white">
-      <div className="flex items-center gap-2 border-b border-line px-3 py-2 text-sm font-semibold">
+    <section id={id} className={`min-h-0 min-w-0 scroll-mt-4 rounded-md border border-line bg-white ${className ?? ""}`}>
+      <div className="flex min-w-0 items-center gap-2 border-b border-line px-3 py-2 text-sm font-semibold">
         {icon}
-        {title}
+        <span className="min-w-0 truncate">{title}</span>
       </div>
-      <div className="p-3">{children}</div>
+      <div className="min-w-0 p-3">{children}</div>
     </section>
   );
 }
