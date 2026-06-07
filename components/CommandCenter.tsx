@@ -186,7 +186,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
                 resultCount={filteredMarkets.length}
                 totalCount={data.markets.length}
               />
-              <div className="mt-3 max-h-[560px] space-y-2 overflow-y-auto pr-1">
+              <div className="dashboard-card-scroll mt-3 space-y-2" data-testid="market-card-scroll">
                 {filteredMarkets.length ? filteredMarkets.map((market) => (
                   <MarketCard
                     key={market.id}
@@ -210,7 +210,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
                 resultCount={filteredOpportunities.length}
                 totalCount={data.opportunities.length}
               />
-              <div className="mt-3 max-h-[560px] space-y-2 overflow-y-auto pr-1">
+              <div className="dashboard-card-scroll mt-3 space-y-2" data-testid="opportunity-card-scroll">
                 {filteredOpportunities.length ? filteredOpportunities.map((opportunity, index) => (
                   <OpportunityCard
                     key={opportunity.id}
