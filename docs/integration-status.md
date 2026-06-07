@@ -8,7 +8,8 @@ Implemented:
 
 - Signed REST requests using `timestamp + METHOD + path`.
 - RSA-PSS/SHA256 signing.
-- Market list, market details, order book, balance, positions, orders, create order, cancel order wrappers.
+- Paginated production market discovery with breadth-aware pod selection.
+- Market details, order book, balance, positions, orders, create order, cancel order wrappers.
 - Live order path calls Kalshi only after explicit live gates pass.
 
 Blocked until:
@@ -16,6 +17,8 @@ Blocked until:
 - `KALSHI_API_KEY`
 - `KALSHI_PRIVATE_KEY` or `KALSHI_PRIVATE_KEY_PATH`
 - Valid `KALSHI_BASE_URL`
+
+Paper market discovery can run against the production public endpoint without signed credentials. The demo endpoint is intentionally smaller and may produce only a few pod themes.
 
 ## Redis
 

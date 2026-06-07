@@ -53,6 +53,7 @@ for (const file of requiredFiles) {
 
 const execution = fs.readFileSync("lib/execution/engine.ts", "utf8");
 const config = fs.readFileSync("lib/config/env.ts", "utf8");
+const kalshiClient = fs.readFileSync("lib/kalshi/client.ts", "utf8");
 const nextConfig = fs.readFileSync("next.config.mjs", "utf8");
 const copilotRoute = fs.readFileSync("app/api/copilotkit/[[...slug]]/route.ts", "utf8");
 const copilotActions = fs.readFileSync("components/copilot/EventFundCopilotActions.tsx", "utf8");
@@ -97,7 +98,9 @@ const checks = [
   ["continuous paper daemon enqueues worker tasks", daemon.includes("runPaperTradingDaemonTick") && daemon.includes("enqueueDaemonTasks")],
   ["Redis Stream workers consume fund queues", workers.includes("readTaskBatch") && workers.includes("ackTask") && workers.includes("runPaperCycle")],
   ["paper iteration defaults are faster", config.includes("PAPER_AGENT_MAX_TRADES_PER_CYCLE: z.coerce.number().default(12)") && config.includes("PAPER_DAEMON_INTERVAL_MS: z.coerce.number().default(60000)")],
-  ["short-horizon urgency scoring is wired", quant.includes("resolutionUrgencyScore") && marketUniverse.includes("resolutionUrgencyScore") && marketService.includes("marketScanPriority") && policyConfig.includes("resolutionUrgencyWeight")],
+  ["Kalshi market discovery paginates and scans production breadth", kalshiClient.includes("cursor") && config.includes("KALSHI_MARKET_SCAN_LIMIT") && config.includes("external-api.kalshi.com")],
+  ["short-horizon urgency scoring is wired", quant.includes("resolutionUrgencyScore") && marketUniverse.includes("resolutionUrgencyScore") && marketUniverse.includes("marketScanPriority") && policyConfig.includes("resolutionUrgencyWeight")],
+  ["market universe selection is pod-diversified", marketUniverse.includes("selectDiverseMarketUniverse") && marketService.includes("selectDiverseMarketUniverse")],
   ["quick-settle arithmetic markets are excluded", marketUniverse.includes("KXQUICKSETTLE") && marketUniverse.includes("isExcludedTradingUniverseMarket")],
   ["agent learning proposes policy changes", learning.includes("buildPaperCycleLearningProposal") && learning.includes("agentPolicyAutopilotApply")],
   ["browser research agent can attach odds evidence", browserResearch.includes("Browser Research Agent") && browserResearch.includes("oddsApiKey") && browserResearch.includes("attachBrowserResearchToOpportunity")],

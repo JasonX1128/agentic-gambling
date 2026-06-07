@@ -452,6 +452,9 @@
           "crypto",
           "ethereum"
         ],
+        "sectorEquals": [
+          "crypto"
+        ],
         "priority": 60
       }
     ],

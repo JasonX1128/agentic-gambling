@@ -46,17 +46,29 @@ export class KalshiClient {
   }
 
   async listMarkets(limit = 20): Promise<Market[]> {
-    const pageSize = Math.min(Math.max(limit, 1), 1000);
-    const params = new URLSearchParams({
-      limit: String(pageSize),
-      status: "open",
-      mve_filter: "exclude"
-    });
-    const response = await this.request<{ markets?: Record<string, unknown>[] }>("GET", `/markets?${params}`, {
-      authOptional: true
-    });
-    const markets = response.markets ?? [];
-    return markets.map((market, index) => normalizeKalshiMarket(market, index));
+    const target = Math.max(limit, 1);
+    const pageSize = Math.min(target, 1000);
+    const markets: Record<string, unknown>[] = [];
+    let cursor: string | undefined;
+
+    while (markets.length < target) {
+      const params = new URLSearchParams({
+        limit: String(pageSize),
+        status: "open",
+        mve_filter: "exclude"
+      });
+      if (cursor) params.set("cursor", cursor);
+
+      const response = await this.request<{ markets?: Record<string, unknown>[]; cursor?: string }>("GET", `/markets?${params}`, {
+        authOptional: true
+      });
+      const page = response.markets ?? [];
+      markets.push(...page);
+      cursor = stringValue(response.cursor);
+      if (!cursor || page.length === 0) break;
+    }
+
+    return markets.slice(0, target).map((market, index) => normalizeKalshiMarket(market, index));
   }
 
   async getMarket(ticker: string): Promise<Market> {
@@ -194,11 +206,13 @@ function normalizeBookSide(levels: Array<[string | number, string | number]>): A
 
 function classifySector(category: string, title: string, ticker: string): string {
   const text = `${category} ${title} ${ticker}`.toLowerCase();
-  if (/fed|cpi|inflation|rate|econom|recession|gdp/.test(text)) return "macro";
+  if (/\b(fed|cpi|inflation|rates?|economy|economic|economics|recession|gdp)\b/.test(text) || /kx(fed|cpi|gdp)/.test(text)) {
+    return "macro";
+  }
   if (/election|senate|house|president|politic|congress/.test(text)) return "politics";
-  if (/weather|hurricane|temperature|climate/.test(text)) return "climate";
+  if (/weather|hurricane|temperature|climate|\b(high|low) temp\b|kx(high|low)/.test(text)) return "climate";
   if (/sport|nba|nfl|mlb|nhl|soccer|baseball|basketball|football|tennis|itf|match|game/.test(text)) return "sports";
-  if (/crypto|bitcoin|ethereum/.test(text)) return "crypto";
+  if (/crypto|bitcoin|ethereum|\bbtc\b|\beth\b|kx(btc|eth)/.test(text)) return "crypto";
   return "general";
 }
 

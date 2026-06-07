@@ -6,11 +6,14 @@ const envSchema = z.object({
   ENABLE_LIVE_TRADING: z.string().default("false"),
   GLOBAL_KILL_SWITCH: z.string().default("false"),
   ALLOW_DEMO_MARKETS: z.string().default("false"),
-  KALSHI_BASE_URL: z.string().url().default("https://external-api.demo.kalshi.co/trade-api/v2"),
+  KALSHI_BASE_URL: z.string().url().default("https://external-api.kalshi.com/trade-api/v2"),
   KALSHI_API_KEY: z.string().optional(),
   KALSHI_PRIVATE_KEY: z.string().optional(),
   KALSHI_PRIVATE_KEY_PATH: z.string().optional(),
   KALSHI_API_SECRET: z.string().optional(),
+  KALSHI_MARKET_SCAN_LIMIT: z.coerce.number().default(8000),
+  KALSHI_MARKET_SCAN_RESULT_LIMIT: z.coerce.number().default(240),
+  KALSHI_MARKET_SCAN_MIN_PER_POD: z.coerce.number().default(10),
   REDIS_URL: z.string().default("redis://localhost:6379"),
   REDIS_NAMESPACE: z.string().default("efos"),
   EVENTFUND_ENV: z.string().default("dev"),
@@ -108,6 +111,15 @@ export function getPaperCycleConfig() {
     maxTradesPerCycle: Math.max(1, Math.floor(env.PAPER_AGENT_MAX_TRADES_PER_CYCLE)),
     minCycleScore: env.PAPER_AGENT_MIN_CYCLE_SCORE,
     minScanHorizonMs: Math.max(60_000, Math.floor(env.PAPER_AGENT_MIN_SCAN_HORIZON_MS))
+  };
+}
+
+export function getKalshiMarketScanConfig() {
+  const env = getEnv();
+  return {
+    scanLimit: Math.max(100, Math.min(12000, Math.floor(env.KALSHI_MARKET_SCAN_LIMIT))),
+    resultLimit: Math.max(20, Math.floor(env.KALSHI_MARKET_SCAN_RESULT_LIMIT)),
+    minPerPod: Math.max(1, Math.floor(env.KALSHI_MARKET_SCAN_MIN_PER_POD))
   };
 }
 

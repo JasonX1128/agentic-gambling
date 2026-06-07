@@ -12,6 +12,7 @@ import type {
 } from "@/lib/domain";
 import { hydrateAgentPolicy } from "@/lib/agents/policy";
 import { actionsForLifecycle, getFundGovernancePolicy } from "@/lib/agents/operating-policy";
+import { classifyTradingUniversePod, classifyTradingUniverseTicker } from "@/lib/markets/universe";
 
 const nowIso = () => new Date().toISOString();
 
@@ -58,21 +59,11 @@ export function buildFundOperatingState(input: {
 }
 
 export function classifyPodSector(market: Market): string {
-  return classifyTickerPod(market.ticker, market.sector, market.title, market.category);
+  return classifyTradingUniversePod(market);
 }
 
 export function classifyTickerPod(ticker: string, sector = "unclassified", title = "", category = ""): string {
-  const text = `${ticker} ${title} ${category}`.toLowerCase();
-  const normalizedSector = sector.toLowerCase();
-  const normalizedCategory = category.toLowerCase();
-  const rules = [...getFundGovernancePolicy().sectorClassificationRules].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
-  for (const rule of rules) {
-    const textMatch = rule.matchAny.some((token) => text.includes(token.toLowerCase()));
-    const sectorMatch = rule.sectorEquals?.some((token) => token.toLowerCase() === normalizedSector) ?? false;
-    const categoryMatch = rule.categoryEquals?.some((token) => token.toLowerCase() === normalizedCategory) ?? false;
-    if (textMatch || sectorMatch || categoryMatch) return rule.sector;
-  }
-  return `${sector}: general`;
+  return classifyTradingUniverseTicker(ticker, sector, title, category);
 }
 
 function buildDynamicPod(

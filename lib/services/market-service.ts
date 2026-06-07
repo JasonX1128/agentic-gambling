@@ -1,20 +1,41 @@
 import type { Market } from "@/lib/domain";
-import { boolEnv, getEnv, getPaperCycleConfig } from "@/lib/config/env";
+import { boolEnv, getEnv, getKalshiMarketScanConfig, getPaperCycleConfig } from "@/lib/config/env";
 import { KalshiClient } from "@/lib/kalshi/client";
 import { demoMarkets } from "@/lib/data/seeds";
-import { isPaperScanCandidate, marketScanPriority } from "@/lib/markets/universe";
+import { classifyTradingUniversePod, isExcludedTradingUniverseMarket, isPaperScanCandidate, selectDiverseMarketUniverse } from "@/lib/markets/universe";
 
-export async function getMarkets(): Promise<{ markets: Market[]; source: "kalshi" | "demo"; blocker?: string }> {
+export async function getMarkets(): Promise<{
+  markets: Market[];
+  source: "kalshi" | "demo";
+  blocker?: string;
+  rawMarketCount?: number;
+  candidateMarketCount?: number;
+  excludedMarketCount?: number;
+  podCount?: number;
+}> {
   const allowDemoMarkets = boolEnv(getEnv().ALLOW_DEMO_MARKETS);
   const client = new KalshiClient();
   try {
-    const markets = await client.listMarkets(1000);
+    const scanConfig = getKalshiMarketScanConfig();
+    const markets = await client.listMarkets(scanConfig.scanLimit);
     const { minScanHorizonMs } = getPaperCycleConfig();
+    const excludedMarketCount = markets.filter(isExcludedTradingUniverseMarket).length;
     const scanMarkets = markets.filter((market) => isPaperScanCandidate(market, minScanHorizonMs));
-    const rankedMarkets = (scanMarkets.length ? scanMarkets : markets)
-      .sort((a, b) => marketScanPriority(b) - marketScanPriority(a))
-      .slice(0, 60);
-    if (rankedMarkets.length > 0) return { markets: rankedMarkets, source: "kalshi" };
+    const fallbackMarkets = markets.filter((market) => !isExcludedTradingUniverseMarket(market));
+    const rankedMarkets = selectDiverseMarketUniverse(scanMarkets.length ? scanMarkets : fallbackMarkets, {
+      limit: scanConfig.resultLimit,
+      minPerPod: scanConfig.minPerPod
+    });
+    if (rankedMarkets.length > 0) {
+      return {
+        markets: rankedMarkets,
+        source: "kalshi",
+        rawMarketCount: markets.length,
+        candidateMarketCount: scanMarkets.length,
+        excludedMarketCount,
+        podCount: new Set(rankedMarkets.map(classifyTradingUniversePod)).size
+      };
+    }
     if (allowDemoMarkets) {
       return { markets: demoMarkets, source: "demo", blocker: "Kalshi returned no open markets for the current query." };
     }

@@ -4,8 +4,8 @@ EventFund OS uses typed modules inside a single Next.js application.
 
 ## Data Flow
 
-1. Kalshi adapter fetches markets and order books using signed REST requests when credentials are present.
-2. Market data is normalized into `Market`.
+1. Kalshi adapter fetches paginated production markets publicly and uses signed REST requests when credentials are present.
+2. Market data is normalized into `Market`, filtered for tradability, and selected into a breadth-aware pod universe.
 3. Sector pods classify markets and produce analyst debates.
 4. Agent prompts, pod classification, lifecycle thresholds, analyst counts, scout cadence, browser-research role policy, and paper-cycle scoring are loaded from `config/agent-operating-policy.json`.
 5. Quant scoring computes market probability, fair probability, EV, confidence, liquidity, downside, resolution urgency, and calibration bucket.
