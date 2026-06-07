@@ -14,6 +14,7 @@ const envSchema = z.object({
   KALSHI_MARKET_SCAN_LIMIT: z.coerce.number().default(8000),
   KALSHI_MARKET_SCAN_RESULT_LIMIT: z.coerce.number().default(240),
   KALSHI_MARKET_SCAN_MIN_PER_POD: z.coerce.number().default(10),
+  KALSHI_MARKET_CACHE_TTL_MS: z.coerce.number().default(60000),
   REDIS_URL: z.string().default("redis://localhost:6379"),
   REDIS_NAMESPACE: z.string().default("efos"),
   EVENTFUND_ENV: z.string().default("dev"),
@@ -119,7 +120,8 @@ export function getKalshiMarketScanConfig() {
   return {
     scanLimit: Math.max(100, Math.min(12000, Math.floor(env.KALSHI_MARKET_SCAN_LIMIT))),
     resultLimit: Math.max(20, Math.floor(env.KALSHI_MARKET_SCAN_RESULT_LIMIT)),
-    minPerPod: Math.max(1, Math.floor(env.KALSHI_MARKET_SCAN_MIN_PER_POD))
+    minPerPod: Math.max(1, Math.floor(env.KALSHI_MARKET_SCAN_MIN_PER_POD)),
+    cacheTtlMs: Math.max(0, Math.floor(env.KALSHI_MARKET_CACHE_TTL_MS))
   };
 }
 

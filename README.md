@@ -101,11 +101,12 @@ KALSHI_PRIVATE_KEY=...
 KALSHI_MARKET_SCAN_LIMIT=8000
 KALSHI_MARKET_SCAN_RESULT_LIMIT=240
 KALSHI_MARKET_SCAN_MIN_PER_POD=10
+KALSHI_MARKET_CACHE_TTL_MS=60000
 ```
 
 Public market discovery uses the Kalshi production REST API without signing by default. Use `https://external-api.demo.kalshi.co/trade-api/v2` only when intentionally testing the smaller Kalshi demo universe. Account reads, portfolio reads, and all live-order paths require a valid API key and RSA private key. You may set `KALSHI_PRIVATE_KEY_PATH` instead of inline PEM. `KALSHI_API_SECRET` is accepted as a compatibility alias, but Kalshi uses an RSA private key.
 
-Market scans are cursor-paginated and breadth-aware. The scanner pulls up to `KALSHI_MARKET_SCAN_LIMIT` open markets, filters unusable/toy markets, then keeps a diversified `KALSHI_MARKET_SCAN_RESULT_LIMIT` universe with at least `KALSHI_MARKET_SCAN_MIN_PER_POD` markets per detected pod before filling by liquidity, volume, and short-horizon urgency.
+Market scans are cursor-paginated and breadth-aware. The scanner pulls up to `KALSHI_MARKET_SCAN_LIMIT` open markets, filters unusable/toy markets, then keeps a diversified `KALSHI_MARKET_SCAN_RESULT_LIMIT` universe with at least `KALSHI_MARKET_SCAN_MIN_PER_POD` markets per detected pod before filling by liquidity, volume, and short-horizon urgency. Results are cached for `KALSHI_MARKET_CACHE_TTL_MS` so dashboard refreshes and daemon ticks do not repeatedly walk deep Kalshi pagination.
 
 Weave:
 

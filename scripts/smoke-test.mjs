@@ -99,6 +99,7 @@ const checks = [
   ["Redis Stream workers consume fund queues", workers.includes("readTaskBatch") && workers.includes("ackTask") && workers.includes("runPaperCycle")],
   ["paper iteration defaults are faster", config.includes("PAPER_AGENT_MAX_TRADES_PER_CYCLE: z.coerce.number().default(12)") && config.includes("PAPER_DAEMON_INTERVAL_MS: z.coerce.number().default(60000)")],
   ["Kalshi market discovery paginates and scans production breadth", kalshiClient.includes("cursor") && config.includes("KALSHI_MARKET_SCAN_LIMIT") && config.includes("external-api.kalshi.com")],
+  ["Kalshi market scans are cached", config.includes("KALSHI_MARKET_CACHE_TTL_MS") && marketService.includes("marketCache") && marketService.includes("pendingMarketScan")],
   ["short-horizon urgency scoring is wired", quant.includes("resolutionUrgencyScore") && marketUniverse.includes("resolutionUrgencyScore") && marketUniverse.includes("marketScanPriority") && policyConfig.includes("resolutionUrgencyWeight")],
   ["market universe selection is pod-diversified", marketUniverse.includes("selectDiverseMarketUniverse") && marketService.includes("selectDiverseMarketUniverse")],
   ["quick-settle arithmetic markets are excluded", marketUniverse.includes("KXQUICKSETTLE") && marketUniverse.includes("isExcludedTradingUniverseMarket")],

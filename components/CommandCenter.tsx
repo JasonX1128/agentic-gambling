@@ -118,7 +118,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
             </button>
           </header>
 
-          <div id="ledger-panel" className="scroll-mt-4 grid grid-cols-8 gap-3 border-b border-line bg-panel px-5 py-4">
+          <div id="ledger-panel" className="scroll-mt-4 grid grid-cols-9 gap-3 border-b border-line bg-panel px-5 py-4">
             <Metric label="Net Liq" value={`$${data.portfolio.netLiquidationValue.toLocaleString()}`} />
             <Metric label="Total P&L" value={`$${data.portfolio.totalPnl.toLocaleString()}`} tone={data.portfolio.totalPnl >= 0 ? "positive" : "negative"} />
             <Metric label="Unrealized" value={`$${data.portfolio.unrealizedPnl.toLocaleString()}`} tone={data.portfolio.unrealizedPnl >= 0 ? "positive" : "negative"} />
@@ -126,7 +126,8 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
             <Metric label="Settled" value={`$${data.portfolio.settledPnl.toLocaleString()}`} tone={data.portfolio.settledPnl >= 0 ? "positive" : "negative"} />
             <Metric label="Open Exposure" value={`$${data.portfolio.openExposure.toLocaleString()}`} />
             <Metric label="Candidates" value={String(approved.length)} />
-            <Metric label="Pods/PIP" value={`${activePods.length}/${stressedPods.length}`} tone={stressedPods.length ? "negative" : undefined} />
+            <Metric label="Pods" value={String(data.pods.length)} />
+            <Metric label="Active/PIP" value={`${activePods.length}/${stressedPods.length}`} tone={stressedPods.length ? "negative" : undefined} />
           </div>
 
           <div className="grid min-h-0 flex-1 grid-cols-[1.25fr_1.15fr_0.85fr] gap-4 p-5">

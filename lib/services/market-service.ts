@@ -4,7 +4,7 @@ import { KalshiClient } from "@/lib/kalshi/client";
 import { demoMarkets } from "@/lib/data/seeds";
 import { classifyTradingUniversePod, isExcludedTradingUniverseMarket, isPaperScanCandidate, selectDiverseMarketUniverse } from "@/lib/markets/universe";
 
-export async function getMarkets(): Promise<{
+type MarketServiceResult = {
   markets: Market[];
   source: "kalshi" | "demo";
   blocker?: string;
@@ -12,7 +12,33 @@ export async function getMarkets(): Promise<{
   candidateMarketCount?: number;
   excludedMarketCount?: number;
   podCount?: number;
-}> {
+  cached?: boolean;
+};
+
+let marketCache: { expiresAt: number; result: MarketServiceResult } | undefined;
+let pendingMarketScan: Promise<MarketServiceResult> | undefined;
+
+export async function getMarkets(): Promise<MarketServiceResult> {
+  const { cacheTtlMs } = getKalshiMarketScanConfig();
+  const now = Date.now();
+  if (marketCache && marketCache.expiresAt > now) {
+    return { ...marketCache.result, cached: true };
+  }
+  if (pendingMarketScan) return pendingMarketScan;
+
+  pendingMarketScan = fetchMarkets().then((result) => {
+    if (cacheTtlMs > 0) {
+      marketCache = { result, expiresAt: Date.now() + cacheTtlMs };
+    }
+    return result;
+  }).finally(() => {
+    pendingMarketScan = undefined;
+  });
+
+  return pendingMarketScan;
+}
+
+async function fetchMarkets(): Promise<MarketServiceResult> {
   const allowDemoMarkets = boolEnv(getEnv().ALLOW_DEMO_MARKETS);
   const client = new KalshiClient();
   try {
