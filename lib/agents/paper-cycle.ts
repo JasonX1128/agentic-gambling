@@ -1,6 +1,8 @@
-import type { ActivityEvent, Opportunity, PaperCycleResult, PortfolioSnapshot, TradeOrder } from "@/lib/domain";
+import type { ActivityEvent, Market, Opportunity, PaperCycleResult, PortfolioSnapshot, SectorPod, TradeOrder } from "@/lib/domain";
 import { getPaperCycleConfig } from "@/lib/config/env";
 import { getOpportunities } from "@/lib/agents/orchestrator";
+import { buildFundOperatingState, classifyPodSector } from "@/lib/agents/fund-management";
+import { getFundGovernancePolicy } from "@/lib/agents/operating-policy";
 import { isPaperCycleEligible, paperCycleScore } from "@/lib/agents/policy";
 import { approvePaperTrade } from "@/lib/execution/engine";
 import { getPortfolioSnapshot } from "@/lib/portfolio/engine";
@@ -20,7 +22,7 @@ export function selectPaperCycleSlate(
 ): SlateItem[] {
   const alreadyTraded = agentPaperTradesToday(portfolio);
   const positionedTickers = new Set(portfolio.positions.map((position) => position.ticker));
-  return opportunities
+  const candidates = opportunities
     .filter(isPaperCycleEligible)
     .filter((opportunity) => !alreadyTraded.has(opportunity.id))
     .filter((opportunity) => !positionedTickers.has(opportunity.market.ticker))
@@ -29,8 +31,49 @@ export function selectPaperCycleSlate(
       score: paperCycleScore(opportunity, portfolio)
     }))
     .filter((item) => item.score >= minCycleScore)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, maxTrades);
+    .sort((a, b) => b.score - a.score);
+  const state = buildFundOperatingState({
+    markets: uniqueMarkets(opportunities.map((opportunity) => opportunity.market)),
+    opportunities,
+    portfolio
+  });
+  const podBySector = new Map(state.pods.map((pod) => [pod.sector, pod]));
+  const selected: SlateItem[] = [];
+  const selectedIds = new Set<string>();
+  const deployments = new Map<string, { trades: number; notional: number }>();
+
+  const addIfBudgeted = (item: SlateItem, pod: SectorPod, forceProbe = false) => {
+    if (selected.length >= maxTrades || selectedIds.has(item.opportunity.id)) return false;
+    if (!canDeployFromPodBudget(item.opportunity, pod, deployments.get(pod.sector), forceProbe)) return false;
+    selected.push(item);
+    selectedIds.add(item.opportunity.id);
+    const current = deployments.get(pod.sector) ?? { trades: 0, notional: 0 };
+    deployments.set(pod.sector, {
+      trades: current.trades + 1,
+      notional: money(current.notional + opportunityNotional(item.opportunity))
+    });
+    return true;
+  };
+
+  const budgetedProbePods = state.pods
+    .filter((pod) => pod.approvedCandidates > 0 && pod.mandate.availableBudget > 0)
+    .filter((pod) => pod.lifecycleStatus !== "sleeping" && pod.lifecycleStatus !== "defense" && pod.lifecycleStatus !== "closed")
+    .sort((a, b) => podProbePriority(b) - podProbePriority(a) || b.mandate.mandateScore - a.mandate.mandateScore);
+
+  for (const pod of budgetedProbePods) {
+    const probe = candidates.find((item) => classifyPodSector(item.opportunity.market) === pod.sector && !selectedIds.has(item.opportunity.id));
+    if (probe) addIfBudgeted(probe, pod, pod.lifecycleStatus === "incubating" || pod.lifecycleStatus === "scouting");
+    if (selected.length >= maxTrades) return selected;
+  }
+
+  for (const item of candidates) {
+    const pod = podBySector.get(classifyPodSector(item.opportunity.market));
+    if (!pod) continue;
+    addIfBudgeted(item, pod);
+    if (selected.length >= maxTrades) break;
+  }
+
+  return selected;
 }
 
 export async function runPaperCycle(options: { enqueueCoordinationTask?: boolean } = {}): Promise<PaperCycleResult> {
@@ -154,6 +197,42 @@ function agentPaperTradesToday(portfolio: PortfolioSnapshot): Set<string> {
   );
 }
 
+function canDeployFromPodBudget(
+  opportunity: Opportunity,
+  pod: SectorPod,
+  deployment: { trades: number; notional: number } | undefined,
+  forceProbe: boolean
+): boolean {
+  if (pod.lifecycleStatus === "sleeping" || pod.lifecycleStatus === "defense" || pod.lifecycleStatus === "closed") return false;
+  const budget = getFundGovernancePolicy().capitalBudgeting;
+  const current = deployment ?? { trades: 0, notional: 0 };
+  const maxTrades = Math.max(1, Math.floor(budget.maxTradesPerPodPerCycle));
+  if (current.trades >= maxTrades) return false;
+  const notional = opportunityNotional(opportunity);
+  const remainingPodBudget = Math.max(0, pod.mandate.availableBudget - current.notional);
+  const cycleBudget = Math.max(
+    forceProbe ? budget.minIncubatingProbeBudget : 0,
+    pod.mandate.capitalBudget * budget.maxCycleDeploymentFraction
+  );
+  const remainingCycleBudget = Math.max(0, cycleBudget - current.notional);
+  return notional <= Math.min(remainingPodBudget, remainingCycleBudget) + 0.01;
+}
+
+function opportunityNotional(opportunity: Opportunity): number {
+  return money(Math.max(0, opportunity.risk.positionSize));
+}
+
+function uniqueMarkets(markets: Market[]): Market[] {
+  return [...new Map(markets.map((market) => [market.ticker, market])).values()];
+}
+
+function podProbePriority(pod: SectorPod): number {
+  if (pod.lifecycleStatus === "incubating" || pod.lifecycleStatus === "scouting") return 4;
+  if (pod.lifecycleStatus === "active") return 3;
+  if (pod.lifecycleStatus === "pip") return 1;
+  return 0;
+}
+
 function nonSlateReasons(opportunity: Opportunity, portfolio: PortfolioSnapshot): string[] {
   const alreadyTraded = agentPaperTradesToday(portfolio).has(opportunity.id);
   const alreadyPositioned = portfolio.positions.some((position) => position.ticker === opportunity.market.ticker);
@@ -180,4 +259,8 @@ function auditEvent(
     severity,
     createdAt: new Date().toISOString()
   };
+}
+
+function money(value: number) {
+  return Number(value.toFixed(2));
 }

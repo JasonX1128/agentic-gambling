@@ -135,6 +135,26 @@ describe("fund operating state", () => {
     expect(state.researchScouts.some((scout) => scout.status === "proposing")).toBe(true);
   });
 
+  it("promotes strong pods to active with performance-adjusted capital budgets", () => {
+    const rows = Array.from({ length: 5 }, (_, index) =>
+      market({
+        id: `market-${index}`,
+        ticker: `KXMLBTOTAL-26JUN061415CINSTL-${index}`,
+        title: `Cincinnati vs St. Louis Total Runs ${index}?`
+      })
+    );
+    const state = buildFundOperatingState({
+      markets: rows,
+      opportunities: rows.map(opportunity),
+      portfolio: portfolio()
+    });
+
+    expect(state.pods[0].lifecycleStatus).toBe("active");
+    expect(state.pods[0].mandate.capitalBudget).toBeGreaterThan(300);
+    expect(state.pods[0].mandate.availableBudget).toBe(state.pods[0].mandate.capitalBudget);
+    expect(state.pods[0].mandate.budgetDecision).toMatch(/Active budget/i);
+  });
+
   it("puts losing pods on executive defense", () => {
     const row = market();
     const state = buildFundOperatingState({

@@ -12,12 +12,12 @@ This repo was created as a greenfield implementation in an empty workspace.
 - W&B Weave tracing integration with safe missing-credential degradation.
 - CopilotKit runtime, sidebar, readable state, and trading control actions.
 - Multi-agent trading hierarchy: CIO, CRO, compliance, research director, execution supervisor, and dynamic sector pods.
-- Dynamic pod governance: research scouts propose new pods, pods resize analyst headcount, losing pods move to PIP/defense, and idle scouts sleep until new markets appear.
-- File-backed agent operating policy at `config/agent-operating-policy.json` for prompts, role rights, sector rules, pod lifecycle thresholds, analyst allocation, scout sleep cadence, proposal thresholds, and paper-cycle scoring.
+- Dynamic pod governance: research scouts propose new pods, pods resize analyst headcount and capital budgets, losing pods move to PIP/defense, and idle scouts sleep until new markets appear.
+- File-backed agent operating policy at `config/agent-operating-policy.json` for prompts, role rights, sector rules, pod lifecycle thresholds, analyst allocation, pod capital budgeting, scout sleep cadence, proposal thresholds, and paper-cycle scoring.
 - Executive roster governance: required seats can be replaced, but protected control functions such as compliance, risk, and execution cannot be left vacant.
 - Quant scoring: market-implied probability, fair probability, EV, confidence, liquidity quality, capped Kelly sizing, Brier/calibration helpers.
 - Paper trading engine that updates Redis-backed portfolio state.
-- CIO-driven paper cycle endpoint that ranks opportunities, enqueues Redis Stream tasks, writes audit events, and executes the approved paper slate.
+- CIO-driven paper cycle endpoint that allocates per-pod paper capital, reserves probes for incubating pods, enqueues Redis Stream tasks, writes audit events, and executes the approved paper slate.
 - Continuous paper-trading daemon that scans markets, marks positions, enqueues Redis Stream work, runs bounded workers, and audits each tick.
 - Redis Stream workers for research, risk cluster review, paper execution, settlement reconciliation, policy learning, and executive committee review.
 - Agent learning loop that proposes permissioned edits to the file-backed paper-cycle policy from PnL and calibration.
@@ -264,6 +264,7 @@ Dynamic pod governance:
 
 - Research scouts continuously classify live Kalshi markets into pod themes.
 - When a theme has enough market depth and approved paper opportunities, scouts propose or incubate a pod.
+- Each pod receives a capital budget from its lifecycle, approved pipeline, mandate score, market depth, and PnL. Paper cycles reserve first probes for incubating pods, then deploy remaining capacity by pod budget and score.
 - If no proposal clears the threshold, the scout records a sleep-until time instead of pretending to work forever.
 - Active pods defend analyst headcount with PnL, calibration, opportunities, and liquidity.
 - Losing pods move to PIP or executive defense, reducing analyst count and requiring a defense memo before more risk budget.
@@ -277,7 +278,7 @@ Agent learning loop:
 
 Agent operating policy:
 
-- Runtime agent prompts, decision rights, sector classification, pod lifecycle thresholds, analyst counts, scout sleep windows, proposal confidence, mandate actions, and CIO paper-cycle scoring are read from `config/agent-operating-policy.json`.
+- Runtime agent prompts, decision rights, sector classification, pod lifecycle thresholds, analyst counts, pod capital budgeting, scout sleep windows, proposal confidence, mandate actions, and CIO paper-cycle scoring are read from `config/agent-operating-policy.json`.
 - Agents can read, propose, or apply permitted sections through CopilotKit tools and `GET/POST /api/agents/policy`.
 - All policy proposals and applies require Redis auditability. If Redis is down, policy mutation is blocked.
 - Protected safety surfaces are intentionally not agent-editable: live-trading environment flags, Kalshi/W&B/Copilot secrets, global kill switch state, permissions, and hard compliance prohibitions.

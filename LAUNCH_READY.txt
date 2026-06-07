@@ -4,17 +4,21 @@ EventFund OS is ready for remote Codex handoff and paper-trading launch iteratio
 Paper lifecycle accounting now includes mark refresh, close, settlement,
 realized/unrealized/settled PnL, and Brier/calibration records.
 Agent management now includes dynamic research scouts, pod proposals,
-analyst headcount changes, PIP/defense reviews, and sleeping scouts.
-Agent prompts, pod governance, sector rules, analyst allocation, scout cadence,
-and paper-cycle scoring now read from config/agent-operating-policy.json with
-permissioned agent proposal/apply paths and Redis audit requirements.
+analyst headcount changes, pod capital budgets, PIP/defense reviews, and
+sleeping scouts.
+Agent prompts, pod governance, sector rules, analyst allocation, pod capital
+budgeting, scout cadence, and paper-cycle scoring now read from
+config/agent-operating-policy.json with permissioned agent proposal/apply paths
+and Redis audit requirements.
 Continuous paper trading now has a locked daemon tick, Redis Stream workers,
 agent learning proposals, conservative Kalshi settlement reconciliation,
 event-cluster risk checks, executive committee actions, live dashboard refresh,
 and production operator-token access control for mutating routes.
-Iteration speed is increased with larger paper slates, one-minute daemon defaults,
-larger worker batches, lower pod incubation friction, and a slight CIO bias toward
-shorter-horizon/live-ish contracts that still pass risk and compliance.
+Iteration speed is increased with significantly larger paper slates, one-minute
+daemon defaults, larger worker batches, lower pod incubation friction,
+incubating-pod probe reservations, performance-adjusted pod budgets, and a
+slight CIO bias toward shorter-horizon/live-ish contracts that still pass risk
+and compliance.
 Browser Research Agent is now attached to trade execution review with a
 configurable public browser harness, sportsbook odds comparison, explicit
 missing-capability blockers, and Copilot/API controls.

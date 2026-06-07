@@ -51,7 +51,25 @@ const fundGovernanceSchema = z.object({
     pipPnl: z.number(),
     pipScore: z.number(),
     incubatingApprovedOpportunities: z.number().nonnegative(),
-    incubatingScore: z.number()
+    incubatingScore: z.number(),
+    activeApprovedOpportunities: z.number().nonnegative(),
+    activeScore: z.number()
+  }),
+  capitalBudgeting: z.object({
+    sleepingBaseBudget: z.number().nonnegative(),
+    defenseBaseBudget: z.number().nonnegative(),
+    pipBaseBudget: z.number().nonnegative(),
+    incubatingBaseBudget: z.number().nonnegative(),
+    activeBaseBudget: z.number().nonnegative(),
+    approvedOpportunityDollars: z.number().nonnegative(),
+    marketDollars: z.number().nonnegative(),
+    scoreBonusDollars: z.number().nonnegative(),
+    positivePnlMultiplier: z.number().nonnegative(),
+    lossShrinkMultiplier: z.number().nonnegative(),
+    maxPodBudget: z.number().positive(),
+    minIncubatingProbeBudget: z.number().nonnegative(),
+    maxCycleDeploymentFraction: z.number().positive(),
+    maxTradesPerPodPerCycle: z.number().positive()
   }),
   reviewHours: z.object({
     defense: z.number().positive(),
@@ -345,7 +363,25 @@ const fallbackPolicy: AgentOperatingPolicy = {
       pipPnl: 0,
       pipScore: 35,
       incubatingApprovedOpportunities: 1,
-      incubatingScore: 50
+      incubatingScore: 50,
+      activeApprovedOpportunities: 5,
+      activeScore: 80
+    },
+    capitalBudgeting: {
+      sleepingBaseBudget: 0,
+      defenseBaseBudget: 0,
+      pipBaseBudget: 40,
+      incubatingBaseBudget: 125,
+      activeBaseBudget: 325,
+      approvedOpportunityDollars: 14,
+      marketDollars: 2,
+      scoreBonusDollars: 2,
+      positivePnlMultiplier: 4,
+      lossShrinkMultiplier: 6,
+      maxPodBudget: 900,
+      minIncubatingProbeBudget: 35,
+      maxCycleDeploymentFraction: 0.35,
+      maxTradesPerPodPerCycle: 6
     },
     reviewHours: {
       defense: 6,

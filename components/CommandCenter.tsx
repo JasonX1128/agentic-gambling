@@ -356,10 +356,15 @@ function PodCard({ pod }: { pod: SectorPod }) {
         <Cell label="Analysts" value={`${pod.mandate.analystCount}/${pod.mandate.targetAnalystCount}`} />
         <Cell label="Score" value={String(pod.mandate.mandateScore)} />
         <Cell label="PnL" value={`$${pod.mandate.totalPnl}`} />
-        <Cell label="Markets" value={String(pod.activeMarkets)} />
+        <Cell label="Budget" value={`$${pod.mandate.capitalBudget}`} />
+        <Cell label="Deployed" value={`$${pod.mandate.deployedCapital}`} />
         <Cell label="Approved" value={String(pod.approvedCandidates)} />
+        <Cell label="Markets" value={String(pod.activeMarkets)} />
       </div>
       <div className="mt-2 break-words border-t border-slate-100 pt-2 text-slate-600">{pod.mandate.thesis}</div>
+      <div className="mt-2 break-words rounded-md border border-slate-200 bg-slate-50 p-2 text-slate-600">
+        {pod.mandate.budgetDecision}
+      </div>
       <div className="mt-2 grid grid-cols-2 gap-2 text-slate-500">
         <div className="min-w-0 break-words">Review: {new Date(pod.mandate.nextReviewAt).toLocaleTimeString()}</div>
         <div className="min-w-0 break-words">Cadence: {pod.mandate.reviewCadence}</div>

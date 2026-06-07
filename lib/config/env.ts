@@ -49,7 +49,7 @@ const envSchema = z.object({
   RISK_AGENT_TARGET_CONFIDENCE: z.coerce.number().default(0.62),
   RISK_AGENT_TARGET_SLIPPAGE_BPS: z.coerce.number().default(150),
   RISK_AGENT_MAX_RISK_SCORE: z.coerce.number().default(65),
-  PAPER_AGENT_MAX_TRADES_PER_CYCLE: z.coerce.number().default(12),
+  PAPER_AGENT_MAX_TRADES_PER_CYCLE: z.coerce.number().default(60),
   PAPER_AGENT_MIN_CYCLE_SCORE: z.coerce.number().default(0),
   PAPER_AGENT_MIN_SCAN_HORIZON_MS: z.coerce.number().default(300000),
   PAPER_DAEMON_ENABLED: z.string().default("false"),

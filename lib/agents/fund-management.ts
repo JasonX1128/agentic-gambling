@@ -123,10 +123,24 @@ function buildMandate(input: {
   const nextReviewHours = reviewHoursFor(input.lifecycleStatus);
   const nextReviewAt = futureHours(nextReviewHours);
   const actions = actionsForLifecycle(input.lifecycleStatus, governance);
+  const capitalBudget = capitalBudgetFor({
+    status: input.lifecycleStatus,
+    approved: input.approvedOpportunityCount,
+    markets: input.marketCount,
+    pnl: input.podPnl.totalPnl,
+    mandateScore: input.mandateScore
+  });
+  const deployedCapital = input.podPnl.openExposure;
+  const availableBudget = money(Math.max(0, capitalBudget - deployedCapital));
   return {
     status: input.lifecycleStatus,
     analystCount: input.analystCount,
     targetAnalystCount: targetAnalystCount(input.lifecycleStatus, input.approvedOpportunityCount),
+    capitalBudget,
+    deployedCapital,
+    availableBudget,
+    budgetUtilization: capitalBudget > 0 ? Number(Math.min(1, deployedCapital / capitalBudget).toFixed(3)) : 0,
+    budgetDecision: budgetDecisionFor(input.lifecycleStatus, input.podPnl.totalPnl, capitalBudget),
     marketCount: input.marketCount,
     opportunityCount: input.opportunityCount,
     approvedOpportunityCount: input.approvedOpportunityCount,
@@ -304,8 +318,44 @@ function lifecycleFromMandate(input: { hasCapital: boolean; mandateScore: number
   if (input.pnl <= thresholds.defensePnl || (input.hasCapital && input.mandateScore < thresholds.defenseScore)) return "defense";
   if (input.pnl < thresholds.pipPnl || (input.hasCapital && input.mandateScore < thresholds.pipScore)) return "pip";
   if (input.hasCapital) return "active";
+  if (input.approved >= thresholds.activeApprovedOpportunities && input.mandateScore >= thresholds.activeScore) return "active";
   if (input.approved >= thresholds.incubatingApprovedOpportunities || input.mandateScore >= thresholds.incubatingScore) return "incubating";
   return input.markets > 0 ? "scouting" : "sleeping";
+}
+
+function capitalBudgetFor(input: {
+  status: PodLifecycleStatus;
+  approved: number;
+  markets: number;
+  pnl: number;
+  mandateScore: number;
+}): number {
+  const budget = getFundGovernancePolicy().capitalBudgeting;
+  const base = baseBudgetFor(input.status);
+  if (base <= 0) return 0;
+  const pipelineBudget = input.approved * budget.approvedOpportunityDollars + input.markets * budget.marketDollars;
+  const scoreBudget = Math.max(0, input.mandateScore - 50) * budget.scoreBonusDollars;
+  const performanceBudget =
+    input.pnl >= 0 ? input.pnl * budget.positivePnlMultiplier : input.pnl * budget.lossShrinkMultiplier;
+  return money(Math.max(0, Math.min(budget.maxPodBudget, base + pipelineBudget + scoreBudget + performanceBudget)));
+}
+
+function baseBudgetFor(status: PodLifecycleStatus): number {
+  const budget = getFundGovernancePolicy().capitalBudgeting;
+  if (status === "sleeping" || status === "closed") return budget.sleepingBaseBudget;
+  if (status === "defense") return budget.defenseBaseBudget;
+  if (status === "pip") return budget.pipBaseBudget;
+  if (status === "incubating" || status === "scouting") return budget.incubatingBaseBudget;
+  return budget.activeBaseBudget;
+}
+
+function budgetDecisionFor(status: PodLifecycleStatus, pnl: number, budget: number): string {
+  if (status === "defense") return "Budget frozen while the pod defends or exits risk.";
+  if (status === "sleeping" || status === "closed") return "No capital budget until scouts find viable markets.";
+  if (status === "pip") return `Budget shrunk to $${budget} while the pod proves recovery.`;
+  if (status === "incubating" || status === "scouting") return `Seed budget $${budget} for first paper probes.`;
+  if (pnl > 0) return `Budget expanded to $${budget} after positive paper PnL.`;
+  return `Active budget $${budget}; deploy across approved pod opportunities.`;
 }
 
 function analystCountFor(status: PodLifecycleStatus, approved: number, markets: number, pnl: number): number {

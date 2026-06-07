@@ -19,7 +19,7 @@ The CTO agent split the work across specialist build agents before implementatio
 - Redis Infrastructure Agent added consumer-group reads and acknowledgements for fund worker queues.
 - Agent Orchestration Engineer added worker handlers for paper cycles, reconciliation, policy learning, and executive review.
 - Data/Quant Engineer added event-cluster exposure detection for duplicated Kalshi risk and short-horizon urgency scoring for faster paper feedback.
-- Runtime/Workers Agent increased default paper-cycle slate size, daemon cadence, worker batch throughput, and sector-pod incubation velocity.
+- Runtime/Workers Agent increased default paper-cycle slate size, daemon cadence, worker batch throughput, sector-pod incubation velocity, and performance-adjusted pod capital allocation.
 - Research/Odds Agent added the Browser Research Agent, public browser-harness adapter, sportsbook odds comparison, and pre-execution enrichment.
 - QA/Test Agent added risk-cluster and settlement-inference coverage plus smoke checks for daemon/worker surfaces.
 - Documentation Agent updated runbooks for continuous paper trading, learning proposals, reconciliation, and production access control.

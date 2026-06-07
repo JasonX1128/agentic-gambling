@@ -336,6 +336,11 @@ export type PodMandate = {
   status: PodLifecycleStatus;
   analystCount: number;
   targetAnalystCount: number;
+  capitalBudget: number;
+  deployedCapital: number;
+  availableBudget: number;
+  budgetUtilization: number;
+  budgetDecision: string;
   marketCount: number;
   opportunityCount: number;
   approvedOpportunityCount: number;
