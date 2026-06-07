@@ -6,6 +6,7 @@ import {
   getPaperCyclePolicy,
   policyForAgentNode
 } from "@/lib/agents/operating-policy";
+import { resolutionUrgencyScore } from "@/lib/quant/scoring";
 import type { AgentPolicy } from "@/lib/agents/operating-policy";
 
 export type { AgentPolicy };
@@ -34,13 +35,15 @@ export function paperCycleScore(opportunity: Opportunity, portfolio: PortfolioSn
   const directionalEdge = Math.abs(opportunity.forecast.expectedValue);
   const crowdingPenalty = Math.min(scoring.crowdingPenaltyMax, existingExposure / scoring.crowdingPenaltyDivisor);
   const negotiationPenalty = opportunity.risk.negotiableBlockedBy.length * scoring.negotiationPenalty;
+  const urgencyBonus = resolutionUrgencyScore(opportunity.market) * scoring.resolutionUrgencyWeight;
   return (
     directionalEdge * scoring.directionalEdgeWeight +
     opportunity.forecast.confidence * scoring.confidenceWeight +
     opportunity.forecast.liquidityQuality * scoring.liquidityQualityWeight -
     opportunity.risk.riskScore * scoring.riskScorePenalty -
     crowdingPenalty -
-    negotiationPenalty
+    negotiationPenalty +
+    urgencyBonus
   );
 }
 

@@ -527,12 +527,13 @@ function OpportunityRow({ opportunity }: { opportunity: Opportunity }) {
         </div>
         <StatusPill tone={approved ? "success" : "warning"}>{approved ? "paper ready" : "blocked"}</StatusPill>
       </div>
-      <div className="mt-3 grid grid-cols-5 gap-2 text-xs">
+      <div className="mt-3 grid grid-cols-3 gap-2 text-xs sm:grid-cols-6">
         <Cell label="Side" value={opportunity.side.toUpperCase()} />
         <Cell label="Edge" value={`${(directionalEdge * 100).toFixed(1)}pt`} />
         <Cell label="Conf" value={`${(opportunity.forecast.confidence * 100).toFixed(0)}%`} />
         <Cell label="Risk" value={String(opportunity.risk.riskScore)} />
         <Cell label="Size" value={`$${opportunity.risk.positionSize}`} />
+        <Cell label="Ends" value={timeToCloseLabel(opportunity.market.closeTime)} />
       </div>
       <div className="mt-2 text-xs text-slate-600">{opportunity.thesis.summary}</div>
       {opportunity.browserResearch ? (
@@ -593,6 +594,18 @@ function OpportunityRow({ opportunity }: { opportunity: Opportunity }) {
       </div>
     </div>
   );
+}
+
+function timeToCloseLabel(closeTime?: string): string {
+  if (!closeTime) return "n/a";
+  const ms = Date.parse(closeTime) - Date.now();
+  if (!Number.isFinite(ms)) return "n/a";
+  if (ms <= 0) return "closed";
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours}h`;
+  return `${Math.round(hours / 24)}d`;
 }
 
 function Cell({ label, value }: { label: string; value: string }) {

@@ -62,7 +62,7 @@ export async function runFundWorkersOnce(input: {
         streamName,
         groupName,
         consumerName,
-        count: streamName === "cio-paper-cycle" ? 1 : input.countPerStream ?? 5,
+        count: workerBatchCount(streamName, input.countPerStream ?? 5),
         blockMs: 0
       });
       for (const row of rows) {
@@ -95,6 +95,11 @@ export async function runFundWorkersOnce(input: {
       createdAt: new Date().toISOString()
     };
   });
+}
+
+function workerBatchCount(streamName: FundWorkerStream, countPerStream: number): number {
+  if (streamName === "cio-paper-cycle") return Math.min(3, countPerStream);
+  return countPerStream;
 }
 
 async function handleWorkerTask(task: RedisStreamTask): Promise<WorkerTaskResult> {

@@ -8,12 +8,12 @@ EventFund OS uses typed modules inside a single Next.js application.
 2. Market data is normalized into `Market`.
 3. Sector pods classify markets and produce analyst debates.
 4. Agent prompts, pod classification, lifecycle thresholds, analyst counts, scout cadence, browser-research role policy, and paper-cycle scoring are loaded from `config/agent-operating-policy.json`.
-5. Quant scoring computes market probability, fair probability, EV, confidence, liquidity, downside, and calibration bucket.
+5. Quant scoring computes market probability, fair probability, EV, confidence, liquidity, downside, resolution urgency, and calibration bucket.
 6. Risk and compliance engines evaluate the opportunity.
 7. CIO memo and opportunity tables expose recommendations.
 8. The Browser Research Agent can attach public browser-harness findings and normalized sportsbook odds before trade execution review.
 9. The continuous paper daemon can enqueue research, risk, paper-cycle, reconciliation, learning, and executive-review tasks.
-10. Redis Stream workers consume bounded batches and execute paper cycles, settlement reconciliation, policy learning, and executive committee review.
+10. Redis Stream workers consume bounded batches and execute paper cycles, settlement reconciliation, policy learning, and executive committee review; daemon defaults favor faster one-minute paper iteration.
 11. Execution supervisor sends paper orders to Redis-backed portfolio accounting by default.
 12. Live orders are submitted to Kalshi only after live prerequisites and per-order approval pass.
 13. Redis stores audit events, paper portfolio, idempotency keys, task streams, locks, ranked opportunities, and Pub/Sub events.
@@ -25,7 +25,7 @@ EventFund OS uses typed modules inside a single Next.js application.
 - `lib/kalshi`: Venue adapter only.
 - `lib/redis`: Coordination, idempotency, Pub/Sub, Streams, and state.
 - `lib/observability`: Weave tracing and redaction.
-- `lib/quant`: Probability, EV, sizing, calibration.
+- `lib/quant`: Probability, EV, sizing, short-horizon urgency, calibration.
 - `lib/risk`: Pre-trade, event-cluster exposure, and live-gate checks.
 - `lib/compliance`: Public information and rule ambiguity policy checks.
 - `lib/portfolio`: Paper portfolio accounting.

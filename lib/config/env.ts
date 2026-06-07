@@ -45,11 +45,13 @@ const envSchema = z.object({
   RISK_AGENT_TARGET_CONFIDENCE: z.coerce.number().default(0.62),
   RISK_AGENT_TARGET_SLIPPAGE_BPS: z.coerce.number().default(150),
   RISK_AGENT_MAX_RISK_SCORE: z.coerce.number().default(65),
-  PAPER_AGENT_MAX_TRADES_PER_CYCLE: z.coerce.number().default(5),
+  PAPER_AGENT_MAX_TRADES_PER_CYCLE: z.coerce.number().default(12),
   PAPER_AGENT_MIN_CYCLE_SCORE: z.coerce.number().default(0),
+  PAPER_AGENT_MIN_SCAN_HORIZON_MS: z.coerce.number().default(300000),
   PAPER_DAEMON_ENABLED: z.string().default("false"),
-  PAPER_DAEMON_INTERVAL_MS: z.coerce.number().default(300000),
+  PAPER_DAEMON_INTERVAL_MS: z.coerce.number().default(60000),
   PAPER_DAEMON_MAX_TICKS: z.coerce.number().default(1),
+  PAPER_DAEMON_WORKER_BATCH_SIZE: z.coerce.number().default(8),
   AGENT_POLICY_AUTOPILOT_APPLY: z.string().default("false"),
   BROWSER_RESEARCH_ENABLED: z.string().default("false"),
   BROWSER_RESEARCH_ENDPOINT: z.string().url().optional(),
@@ -104,7 +106,8 @@ export function getPaperCycleConfig() {
   const env = getEnv();
   return {
     maxTradesPerCycle: Math.max(1, Math.floor(env.PAPER_AGENT_MAX_TRADES_PER_CYCLE)),
-    minCycleScore: env.PAPER_AGENT_MIN_CYCLE_SCORE
+    minCycleScore: env.PAPER_AGENT_MIN_CYCLE_SCORE,
+    minScanHorizonMs: Math.max(60_000, Math.floor(env.PAPER_AGENT_MIN_SCAN_HORIZON_MS))
   };
 }
 
@@ -114,6 +117,7 @@ export function getAgentAutomationConfig() {
     paperDaemonEnabled: boolEnv(env.PAPER_DAEMON_ENABLED),
     paperDaemonIntervalMs: Math.max(10_000, Math.floor(env.PAPER_DAEMON_INTERVAL_MS)),
     paperDaemonMaxTicks: Math.max(1, Math.floor(env.PAPER_DAEMON_MAX_TICKS)),
+    paperDaemonWorkerBatchSize: Math.max(1, Math.floor(env.PAPER_DAEMON_WORKER_BATCH_SIZE)),
     agentPolicyAutopilotApply: boolEnv(env.AGENT_POLICY_AUTOPILOT_APPLY),
     operatorAuthConfigured: Boolean(env.OPERATOR_API_TOKEN),
     operatorAuthRequired: env.EVENTFUND_ENV === "production" || Boolean(env.OPERATOR_API_TOKEN)

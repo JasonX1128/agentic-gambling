@@ -1,5 +1,5 @@
 import type { ActivityEvent, AgentNode, Market, Opportunity, PodLifecycleStatus, PortfolioSnapshot, SectorPod } from "@/lib/domain";
-import { clamp, computeForecast, marketImpliedProbability } from "@/lib/quant/scoring";
+import { clamp, computeForecast, marketImpliedProbability, resolutionUrgencyScore } from "@/lib/quant/scoring";
 import { evaluateCompliance } from "@/lib/compliance/engine";
 import { evaluateRisk } from "@/lib/risk/engine";
 import { getRiskLimits } from "@/lib/config/env";
@@ -209,6 +209,7 @@ export function buildDemoOpportunities(markets: Market[] = demoMarkets, portfoli
     ];
     const forecast = computeForecast(market, fairProbability);
     const directionalEdge = Math.abs(forecast.expectedValue);
+    const urgencyScore = resolutionUrgencyScore(market);
     const proposedSide = forecast.fairProbability >= forecast.marketProbability ? "yes" : "no";
     const thesis = {
       summary:
@@ -217,7 +218,8 @@ export function buildDemoOpportunities(markets: Market[] = demoMarkets, portfoli
           : "Watchlist candidate; edge is not yet strong enough for execution.",
       bullCase: [
         "Market-implied probability appears stale versus public data trend.",
-        "Rules and settlement source are machine-readable enough for monitoring."
+        "Rules and settlement source are machine-readable enough for monitoring.",
+        ...(urgencyScore >= 0.6 ? ["Short resolution horizon can accelerate paper PnL feedback and calibration."] : [])
       ],
       bearCase: [
         "Thin order book may overstate executable edge.",
@@ -276,7 +278,7 @@ export function buildDemoOpportunities(markets: Market[] = demoMarkets, portfoli
       id: `opp-${market.ticker}`,
       market,
       side: proposedSide,
-      rankScore: Math.round((directionalEdge * 100 + forecast.confidence * 25 + forecast.liquidityQuality * 20) * 10) / 10,
+      rankScore: Math.round((directionalEdge * 100 + forecast.confidence * 25 + forecast.liquidityQuality * 20 + urgencyScore * 8) * 10) / 10,
       forecast,
       thesis,
       debate: [...debate, ...risk.negotiation],

@@ -43,7 +43,10 @@ export async function runPaperTradingDaemonTick(): Promise<PaperDaemonTickResult
       const marked = await markPortfolioToMarket(marketResult.markets).catch(() => getPortfolioSnapshot());
       await ensureFundWorkerGroups();
       await enqueueDaemonTasks(tickId, marketResult.markets, marked.positions.length);
-      const workerRun = await runFundWorkersOnce({ countPerStream: 3, consumerName: `daemon-${process.pid}` });
+      const workerRun = await runFundWorkersOnce({
+        countPerStream: getAgentAutomationConfig().paperDaemonWorkerBatchSize,
+        consumerName: `daemon-${process.pid}`
+      });
 
       const result: PaperDaemonTickResult = {
         tickId,

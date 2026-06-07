@@ -150,7 +150,8 @@ const paperCycleSchema = z.object({
     riskScorePenalty: z.number(),
     crowdingPenaltyMax: z.number(),
     crowdingPenaltyDivisor: z.number().positive(),
-    negotiationPenalty: z.number()
+    negotiationPenalty: z.number(),
+    resolutionUrgencyWeight: z.number()
   })
 });
 
@@ -328,11 +329,11 @@ const fallbackPolicy: AgentOperatingPolicy = {
     analystRoles: ["Data Analyst", "News Analyst", "Rules Analyst", "Market Microstructure Analyst", "Contrarian Agent", "Calibration Agent"],
     sectorClassificationRules: [],
     mandateScoring: {
-      base: 45,
+      base: 50,
       pnlMultiplier: 2,
-      approvedOpportunityWeight: 8,
-      marketWeight: 3,
-      blockedPenalty: 5,
+      approvedOpportunityWeight: 10,
+      marketWeight: 4,
+      blockedPenalty: 3,
       exposurePenaltyThreshold: 250,
       exposurePenaltyDivisor: 20,
       minScore: 0,
@@ -342,34 +343,34 @@ const fallbackPolicy: AgentOperatingPolicy = {
       defensePnl: -25,
       defenseScore: 25,
       pipPnl: 0,
-      pipScore: 40,
-      incubatingApprovedOpportunities: 2,
-      incubatingScore: 60
+      pipScore: 35,
+      incubatingApprovedOpportunities: 1,
+      incubatingScore: 50
     },
     reviewHours: {
       defense: 6,
       pip: 12,
-      sleeping: 24,
-      default: 4,
-      scoutNoMarkets: 6,
-      scoutInvestigating: 4,
-      proposalSleep: 12
+      sleeping: 12,
+      default: 2,
+      scoutNoMarkets: 3,
+      scoutInvestigating: 1,
+      proposalSleep: 4
     },
     analystCounts: {
       sleeping: { current: 1, target: 0 },
       defense: { current: 3, target: 2 },
       pip: { current: 4, target: 3 },
-      incubating: { base: 3, approvedMultiplier: 1, max: 7, targetMax: 6 },
+      incubating: { base: 4, approvedMultiplier: 2, max: 9, targetMax: 8 },
       active: {
-        base: 4,
+        base: 5,
         min: 5,
-        max: 10,
-        approvedMultiplier: 1,
-        marketsDivisor: 4,
+        max: 12,
+        approvedMultiplier: 2,
+        marketsDivisor: 3,
         positivePnlBonusThreshold: 10,
         positivePnlBonus: 1,
-        targetBase: 5,
-        targetMax: 10
+        targetBase: 6,
+        targetMax: 12
       }
     },
     mandateActions: {
@@ -398,7 +399,7 @@ const fallbackPolicy: AgentOperatingPolicy = {
       mandateScoreDivisor: 250,
       minConfidence: 0.2,
       maxConfidence: 0.95,
-      proposalThreshold: 0.55,
+      proposalThreshold: 0.42,
       risks: ["Thin liquidity can produce false paper edge", "Settlement rules must stay machine-readable"]
     },
     scoutMessages: {
@@ -440,7 +441,8 @@ const fallbackPolicy: AgentOperatingPolicy = {
       riskScorePenalty: 0.4,
       crowdingPenaltyMax: 20,
       crowdingPenaltyDivisor: 20,
-      negotiationPenalty: 2.5
+      negotiationPenalty: 2.5,
+      resolutionUrgencyWeight: 8
     }
   }
 };

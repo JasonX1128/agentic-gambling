@@ -32,6 +32,7 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
         ticker: opportunity.market.ticker,
         title: opportunity.market.title,
         sector: opportunity.sector,
+        closeTime: opportunity.market.closeTime,
         side: opportunity.side,
         expectedValue: opportunity.forecast.expectedValue,
         directionalEdge: Math.abs(opportunity.forecast.expectedValue),

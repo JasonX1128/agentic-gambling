@@ -456,11 +456,11 @@
       }
     ],
     "mandateScoring": {
-      "base": 45,
+      "base": 50,
       "pnlMultiplier": 2,
-      "approvedOpportunityWeight": 8,
-      "marketWeight": 3,
-      "blockedPenalty": 5,
+      "approvedOpportunityWeight": 10,
+      "marketWeight": 4,
+      "blockedPenalty": 3,
       "exposurePenaltyThreshold": 250,
       "exposurePenaltyDivisor": 20,
       "minScore": 0,
@@ -470,18 +470,18 @@
       "defensePnl": -25,
       "defenseScore": 25,
       "pipPnl": 0,
-      "pipScore": 40,
-      "incubatingApprovedOpportunities": 2,
-      "incubatingScore": 60
+      "pipScore": 35,
+      "incubatingApprovedOpportunities": 1,
+      "incubatingScore": 50
     },
     "reviewHours": {
       "defense": 6,
       "pip": 12,
-      "sleeping": 24,
-      "default": 4,
-      "scoutNoMarkets": 6,
-      "scoutInvestigating": 4,
-      "proposalSleep": 12
+      "sleeping": 12,
+      "default": 2,
+      "scoutNoMarkets": 3,
+      "scoutInvestigating": 1,
+      "proposalSleep": 4
     },
     "analystCounts": {
       "sleeping": {
@@ -497,21 +497,21 @@
         "target": 3
       },
       "incubating": {
-        "base": 3,
-        "approvedMultiplier": 1,
-        "max": 7,
-        "targetMax": 6
+        "base": 4,
+        "approvedMultiplier": 2,
+        "max": 9,
+        "targetMax": 8
       },
       "active": {
-        "base": 4,
+        "base": 5,
         "min": 5,
-        "max": 10,
-        "approvedMultiplier": 1,
-        "marketsDivisor": 4,
+        "max": 12,
+        "approvedMultiplier": 2,
+        "marketsDivisor": 3,
         "positivePnlBonusThreshold": 10,
         "positivePnlBonus": 1,
-        "targetBase": 5,
-        "targetMax": 10
+        "targetBase": 6,
+        "targetMax": 12
       }
     },
     "mandateActions": {
@@ -567,7 +567,7 @@
       "mandateScoreDivisor": 250,
       "minConfidence": 0.2,
       "maxConfidence": 0.95,
-      "proposalThreshold": 0.55,
+      "proposalThreshold": 0.42,
       "risks": [
         "Thin liquidity can produce false paper edge",
         "Settlement rules must stay machine-readable",
@@ -613,7 +613,8 @@
       "riskScorePenalty": 0.4,
       "crowdingPenaltyMax": 20,
       "crowdingPenaltyDivisor": 20,
-      "negotiationPenalty": 2.5
+      "negotiationPenalty": 2.5,
+      "resolutionUrgencyWeight": 8
     }
   }
 }

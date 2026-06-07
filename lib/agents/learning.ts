@@ -110,16 +110,19 @@ export function buildPaperCycleLearningProposal(
     next.scoring.riskScorePenalty = round(Math.max(0.2, current.scoring.riskScorePenalty * 0.85));
     next.scoring.negotiationPenalty = round(Math.max(0, current.scoring.negotiationPenalty * 0.75));
     next.scoring.crowdingPenaltyMax = round(Math.max(0.5, current.scoring.crowdingPenaltyMax * 0.8));
+    next.scoring.resolutionUrgencyWeight = round(Math.min(14, current.scoring.resolutionUrgencyWeight * 1.15));
     reason = "Calibration Agent loosens paper-cycle scoring because real paper volume is still too low for useful calibration.";
   } else if (metrics.settledTrades >= 3 && (metrics.brierScore > 0.28 || metrics.totalPnl < 0)) {
     next.scoring.confidenceWeight = round(current.scoring.confidenceWeight * 1.12);
     next.scoring.riskScorePenalty = round(current.scoring.riskScorePenalty * 1.15);
     next.scoring.directionalEdgeWeight = round(current.scoring.directionalEdgeWeight * 1.08);
+    next.scoring.resolutionUrgencyWeight = round(Math.max(3, current.scoring.resolutionUrgencyWeight * 0.9));
     reason = "Calibration Agent tightens paper-cycle scoring because settled calibration or PnL is underperforming.";
   } else if (metrics.settledTrades >= 3 && metrics.winRate >= 0.55 && metrics.totalPnl >= 0) {
     next.scoring.directionalEdgeWeight = round(current.scoring.directionalEdgeWeight * 1.08);
     next.scoring.liquidityQualityWeight = round(current.scoring.liquidityQualityWeight * 1.05);
     next.scoring.negotiationPenalty = round(Math.max(0, current.scoring.negotiationPenalty * 0.9));
+    next.scoring.resolutionUrgencyWeight = round(Math.min(14, current.scoring.resolutionUrgencyWeight * 1.05));
     reason = "Calibration Agent rewards the current profitable paper pattern while preserving risk/compliance gates.";
   }
 

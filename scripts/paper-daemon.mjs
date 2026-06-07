@@ -1,5 +1,5 @@
 const appUrl = (process.env.EVENTFUND_APP_URL || "http://localhost:3000").replace(/\/$/, "");
-const intervalMs = Math.max(10_000, Number(process.env.PAPER_DAEMON_INTERVAL_MS || 300_000));
+const intervalMs = Math.max(10_000, Number(process.env.PAPER_DAEMON_INTERVAL_MS || 60_000));
 const maxTicks = Number(process.env.PAPER_DAEMON_MAX_TICKS || 1);
 const token = process.env.OPERATOR_API_TOKEN;
 

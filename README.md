@@ -175,11 +175,12 @@ curl -X POST http://localhost:3000/api/agents/daemon/tick \
 
 Hard risk limits are broad circuit breakers. The default slippage rail is intentionally loose for paper calibration, while the Risk Agent's spread target remains strict. The Risk Agent applies target policy for sizing, spread, liquidity, confidence, and portfolio crowding, and can negotiate smaller paper probes without pretending the hard limits were breached.
 
-Paper-cycle defaults are intentionally loose for early calibration volume:
+Paper-cycle defaults are intentionally loose for early calibration volume. The CIO scoring policy also adds a small configurable bonus for contracts that resolve sooner, so live-ish and same-day markets get faster paper PnL/calibration feedback when risk and compliance still pass:
 
 ```env
-PAPER_AGENT_MAX_TRADES_PER_CYCLE=5
+PAPER_AGENT_MAX_TRADES_PER_CYCLE=12
 PAPER_AGENT_MIN_CYCLE_SCORE=0
+PAPER_AGENT_MIN_SCAN_HORIZON_MS=300000
 RISK_AGENT_MAX_POSITION_SIZE=50
 RISK_AGENT_TARGET_CONFIDENCE=0.62
 ```
@@ -188,8 +189,9 @@ Continuous daemon and learning defaults:
 
 ```env
 PAPER_DAEMON_ENABLED=false
-PAPER_DAEMON_INTERVAL_MS=300000
+PAPER_DAEMON_INTERVAL_MS=60000
 PAPER_DAEMON_MAX_TICKS=1
+PAPER_DAEMON_WORKER_BATCH_SIZE=8
 AGENT_POLICY_AUTOPILOT_APPLY=false
 ```
 

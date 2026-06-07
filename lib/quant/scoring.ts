@@ -18,6 +18,24 @@ export function liquidityQuality(market: Market): number {
   return clamp(depthScore * (1 - spreadPenalty));
 }
 
+export function hoursUntilClose(market: Pick<Market, "closeTime">, now = new Date()): number | undefined {
+  if (!market.closeTime) return undefined;
+  const closeTime = Date.parse(market.closeTime);
+  if (!Number.isFinite(closeTime)) return undefined;
+  return (closeTime - now.getTime()) / (60 * 60 * 1000);
+}
+
+export function resolutionUrgencyScore(market: Pick<Market, "closeTime">, now = new Date()): number {
+  const hours = hoursUntilClose(market, now);
+  if (hours === undefined || hours <= 0) return 0;
+  if (hours <= 1) return 0.55;
+  if (hours <= 6) return 1;
+  if (hours <= 24) return 0.85;
+  if (hours <= 72) return 0.6;
+  if (hours <= 168) return 0.35;
+  return 0.08;
+}
+
 export function expectedValue(fairProbability: number, entryPrice: number): number {
   return fairProbability - entryPrice;
 }
