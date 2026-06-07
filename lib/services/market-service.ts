@@ -2,7 +2,7 @@ import type { Market } from "@/lib/domain";
 import { boolEnv, getEnv, getPaperCycleConfig } from "@/lib/config/env";
 import { KalshiClient } from "@/lib/kalshi/client";
 import { demoMarkets } from "@/lib/data/seeds";
-import { resolutionUrgencyScore } from "@/lib/quant/scoring";
+import { isPaperScanCandidate, marketScanPriority } from "@/lib/markets/universe";
 
 export async function getMarkets(): Promise<{ markets: Market[]; source: "kalshi" | "demo"; blocker?: string }> {
   const allowDemoMarkets = boolEnv(getEnv().ALLOW_DEMO_MARKETS);
@@ -38,18 +38,4 @@ export async function getMarkets(): Promise<{ markets: Market[]; source: "kalshi
       blocker: `${blocker}; demo fallback is disabled.`
     };
   }
-}
-
-function isPaperScanCandidate(market: Market, minScanHorizonMs: number) {
-  if (market.yesBid <= 0 || market.yesAsk <= 0) return false;
-  if (market.yesAsk <= market.yesBid) return false;
-
-  if (!market.closeTime) return true;
-  const closeTime = Date.parse(market.closeTime);
-  if (!Number.isFinite(closeTime)) return true;
-  return closeTime - Date.now() >= minScanHorizonMs;
-}
-
-function marketScanPriority(market: Market) {
-  return market.liquidity + market.volume / 100 + resolutionUrgencyScore(market) * 750;
 }

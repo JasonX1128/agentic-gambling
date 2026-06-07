@@ -13,6 +13,7 @@ const requiredFiles = [
   "lib/agents/executive-committee.ts",
   "lib/agents/fund-management.ts",
   "lib/agents/operating-policy.ts",
+  "lib/markets/universe.ts",
   "config/agent-operating-policy.json",
   "app/api/copilotkit/[[...slug]]/route.ts",
   "app/api/agents/paper-cycle/route.ts",
@@ -61,6 +62,7 @@ const workers = fs.readFileSync("lib/agents/workers.ts", "utf8");
 const learning = fs.readFileSync("lib/agents/learning.ts", "utf8");
 const quant = fs.readFileSync("lib/quant/scoring.ts", "utf8");
 const marketService = fs.readFileSync("lib/services/market-service.ts", "utf8");
+const marketUniverse = fs.readFileSync("lib/markets/universe.ts", "utf8");
 const browserResearch = fs.readFileSync("lib/research/browser-agent.ts", "utf8");
 const risk = fs.readFileSync("lib/risk/engine.ts", "utf8");
 const operatorAuth = fs.readFileSync("lib/security/operator-auth.ts", "utf8");
@@ -95,7 +97,8 @@ const checks = [
   ["continuous paper daemon enqueues worker tasks", daemon.includes("runPaperTradingDaemonTick") && daemon.includes("enqueueDaemonTasks")],
   ["Redis Stream workers consume fund queues", workers.includes("readTaskBatch") && workers.includes("ackTask") && workers.includes("runPaperCycle")],
   ["paper iteration defaults are faster", config.includes("PAPER_AGENT_MAX_TRADES_PER_CYCLE: z.coerce.number().default(12)") && config.includes("PAPER_DAEMON_INTERVAL_MS: z.coerce.number().default(60000)")],
-  ["short-horizon urgency scoring is wired", quant.includes("resolutionUrgencyScore") && marketService.includes("resolutionUrgencyScore") && policyConfig.includes("resolutionUrgencyWeight")],
+  ["short-horizon urgency scoring is wired", quant.includes("resolutionUrgencyScore") && marketUniverse.includes("resolutionUrgencyScore") && marketService.includes("marketScanPriority") && policyConfig.includes("resolutionUrgencyWeight")],
+  ["quick-settle arithmetic markets are excluded", marketUniverse.includes("KXQUICKSETTLE") && marketUniverse.includes("isExcludedTradingUniverseMarket")],
   ["agent learning proposes policy changes", learning.includes("buildPaperCycleLearningProposal") && learning.includes("agentPolicyAutopilotApply")],
   ["browser research agent can attach odds evidence", browserResearch.includes("Browser Research Agent") && browserResearch.includes("oddsApiKey") && browserResearch.includes("attachBrowserResearchToOpportunity")],
   ["risk engine checks event-cluster exposure", risk.includes("MAX_CORRELATED_EXPOSURE") && risk.includes("eventClusterExposure")],
