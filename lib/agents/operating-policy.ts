@@ -56,6 +56,7 @@ const fundGovernanceSchema = z.object({
     defenseScore: z.number(),
     pipPnl: z.number(),
     pipScore: z.number(),
+    pnlMaterialityFloor: z.number().nonnegative(),
     incubatingApprovedOpportunities: z.number().nonnegative(),
     incubatingScore: z.number(),
     activeApprovedOpportunities: z.number().nonnegative(),
@@ -374,8 +375,9 @@ const fallbackPolicy: AgentOperatingPolicy = {
     lifecycleThresholds: {
       defensePnl: -25,
       defenseScore: 25,
-      pipPnl: 0,
+      pipPnl: -10,
       pipScore: 35,
+      pnlMaterialityFloor: 10,
       incubatingApprovedOpportunities: 1,
       incubatingScore: 50,
       activeApprovedOpportunities: 5,

@@ -205,6 +205,40 @@ describe("fund operating state", () => {
     expect(state.pods[0].mandate.requiredDefense.length).toBeGreaterThan(0);
   });
 
+  it("ignores immaterial negative PnL instead of putting pods on PIP", () => {
+    const rows = Array.from({ length: 5 }, (_, index) =>
+      market({
+        id: `tiny-loss-market-${index}`,
+        ticker: `KXMLBTOTAL-26JUN061415CINSTL-${index}`,
+        title: `Cincinnati vs St. Louis Total Runs ${index}?`
+      })
+    );
+    const state = buildFundOperatingState({
+      markets: rows,
+      opportunities: rows.map(opportunity),
+      portfolio: portfolio({
+        positions: [
+          {
+            ticker: rows[0].ticker,
+            sector: rows[0].sector,
+            yesContracts: 10,
+            noContracts: 0,
+            avgCost: 0.5,
+            markPrice: 0.499,
+            realizedPnl: 0,
+            unrealizedPnl: -0.02,
+            mode: "paper"
+          }
+        ]
+      })
+    });
+
+    expect(state.pods[0].mandate.totalPnl).toBe(-0.02);
+    expect(state.pods[0].lifecycleStatus).toBe("active");
+    expect(state.executiveReviews).toHaveLength(0);
+    expect(state.budgetCommitteeRecords[0].decision).not.toBe("shrink");
+  });
+
   it("sleeps the research loop when there are no markets or proposals", () => {
     const state = buildFundOperatingState({ markets: [], opportunities: [], portfolio: portfolio() });
     expect(state.pods).toHaveLength(0);

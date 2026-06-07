@@ -472,8 +472,9 @@
     "lifecycleThresholds": {
       "defensePnl": -25,
       "defenseScore": 25,
-      "pipPnl": 0,
+      "pipPnl": -10,
       "pipScore": 35,
+      "pnlMaterialityFloor": 10,
       "incubatingApprovedOpportunities": 1,
       "incubatingScore": 50,
       "activeApprovedOpportunities": 5,

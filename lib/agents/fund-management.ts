@@ -55,7 +55,7 @@ export function buildFundOperatingState(input: {
   const budgetCommitteeRecords = buildBudgetCommitteeRecords(pods, podAttributions);
   const podMemory = buildPodMemoryRecords(pods, input.opportunities, input.portfolio, crossPodBriefings, crossPodConflicts, budgetCommitteeRecords);
   const executiveReviews = pods
-    .filter((pod) => pod.lifecycleStatus === "pip" || pod.lifecycleStatus === "defense" || pod.mandate.totalPnl < 0)
+    .filter((pod) => pod.lifecycleStatus === "pip" || pod.lifecycleStatus === "defense" || isMaterialPodLoss(pod.mandate.totalPnl))
     .map((pod) => ({
       id: `review-${pod.id}`,
       podId: pod.id,
@@ -501,7 +501,7 @@ function buildBudgetCommitteeRecords(pods: SectorPod[], attributions: PodAttribu
     const decision: BudgetCommitteeRecord["decision"] =
       pod.lifecycleStatus === "defense" ? "freeze" :
         attribution.totalPnl > 0 && attribution.executionQuality >= 0.65 ? "expand" :
-          attribution.totalPnl < 0 || attribution.blockedRate > 0.35 ? "shrink" : "hold";
+          isMaterialPodLoss(attribution.totalPnl) || attribution.blockedRate > 0.35 ? "shrink" : "hold";
     return {
       id: `budget-${pod.id}-${Date.now()}`,
       podId: pod.id,
@@ -686,13 +686,14 @@ function podPnlSnapshot(podKey: string, portfolio: PortfolioSnapshot, markets: M
 
 function scoreMandate(input: { pnl: number; approved: number; blocked: number; markets: number; openExposure: number }) {
   const scoring = getFundGovernancePolicy().mandateScoring;
+  const effectivePnl = isGovernancePnlNoise(input.pnl) ? 0 : input.pnl;
   return Math.max(
     scoring.minScore,
     Math.min(
       scoring.maxScore,
       Math.round(
         scoring.base +
-          input.pnl * scoring.pnlMultiplier +
+          effectivePnl * scoring.pnlMultiplier +
           input.approved * scoring.approvedOpportunityWeight +
           input.markets * scoring.marketWeight -
           input.blocked * scoring.blockedPenalty -
@@ -704,9 +705,10 @@ function scoreMandate(input: { pnl: number; approved: number; blocked: number; m
 
 function lifecycleFromMandate(input: { hasCapital: boolean; mandateScore: number; pnl: number; approved: number; markets: number }): PodLifecycleStatus {
   const thresholds = getFundGovernancePolicy().lifecycleThresholds;
+  const materialLoss = isMaterialPodLoss(input.pnl);
   if (!input.markets && !input.hasCapital) return "sleeping";
   if (input.pnl <= thresholds.defensePnl || (input.hasCapital && input.mandateScore < thresholds.defenseScore)) return "defense";
-  if (input.pnl < thresholds.pipPnl || (input.hasCapital && input.mandateScore < thresholds.pipScore)) return "pip";
+  if ((materialLoss && input.pnl <= thresholds.pipPnl) || (input.hasCapital && input.mandateScore < thresholds.pipScore)) return "pip";
   if (input.hasCapital) return "active";
   if (input.approved >= thresholds.activeApprovedOpportunities && input.mandateScore >= thresholds.activeScore) return "active";
   if (input.approved >= thresholds.incubatingApprovedOpportunities || input.mandateScore >= thresholds.incubatingScore) return "incubating";
@@ -726,8 +728,18 @@ function capitalBudgetFor(input: {
   const pipelineBudget = input.approved * budget.approvedOpportunityDollars + input.markets * budget.marketDollars;
   const scoreBudget = Math.max(0, input.mandateScore - 50) * budget.scoreBonusDollars;
   const performanceBudget =
-    input.pnl >= 0 ? input.pnl * budget.positivePnlMultiplier : input.pnl * budget.lossShrinkMultiplier;
+    input.pnl >= 0 ? input.pnl * budget.positivePnlMultiplier : isMaterialPodLoss(input.pnl) ? input.pnl * budget.lossShrinkMultiplier : 0;
   return money(Math.max(0, Math.min(budget.maxPodBudget, base + pipelineBudget + scoreBudget + performanceBudget)));
+}
+
+function isGovernancePnlNoise(pnl: number): boolean {
+  const floor = getFundGovernancePolicy().lifecycleThresholds.pnlMaterialityFloor;
+  return pnl < 0 && Math.abs(pnl) < floor;
+}
+
+function isMaterialPodLoss(pnl: number): boolean {
+  const floor = getFundGovernancePolicy().lifecycleThresholds.pnlMaterialityFloor;
+  return pnl <= -floor;
 }
 
 function baseBudgetFor(status: PodLifecycleStatus): number {
