@@ -102,6 +102,7 @@ const checks = [
   ["portfolio accounting separates settled and unrealized PnL", portfolio.includes("settledPnl") && portfolio.includes("unrealizedPnl")],
   ["portfolio analytics snapshots persist return series", portfolio.includes("recordPortfolioPerformanceSnapshot") && portfolioAnalytics.includes("sampleSharpe") && redisCoordination.includes("savePortfolioPerformanceSnapshot")],
   ["continuous paper daemon enqueues worker tasks", daemon.includes("runPaperTradingDaemonTick") && daemon.includes("enqueueDaemonTasks")],
+  ["paper daemon runner keeps looping after transient fetch errors", fs.readFileSync("scripts/paper-daemon.mjs", "utf8").includes("PAPER_DAEMON_FETCH_TIMEOUT_MS") && fs.readFileSync("scripts/paper-daemon.mjs", "utf8").includes("nextRetryInMs")],
   ["Redis Stream workers consume fund queues", workers.includes("readTaskBatch") && workers.includes("ackTask") && workers.includes("runPaperCycle")],
   ["cross-pod collaboration worker shares analyst check-ins", workers.includes("cross_pod_checkin") && daemon.includes("cross_pod_checkin") && policyConfig.includes("crossPodCollaboration")],
   ["fund memory persists pod lessons and budget history", workers.includes("fund_memory_snapshot") && daemon.includes("fund_memory_snapshot") && fs.readFileSync("lib/redis/coordination.ts", "utf8").includes("savePodMemoryRecord")],
