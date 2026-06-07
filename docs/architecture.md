@@ -48,6 +48,8 @@ EventFund OS uses typed modules inside a single Next.js application.
 - `efos:{env}:events:risk`
 - `efos:{env}:events:agent`
 - `efos:{env}:portfolio:main`
+- `efos:{env}:portfolio:snapshots`
+- `efos:{env}:portfolio:snapshot:*`
 - `efos:{env}:audit`
 - `efos:{env}:opportunities:ranked`
 - `efos:{env}:idempotency:*`

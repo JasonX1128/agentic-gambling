@@ -5,6 +5,7 @@ import type {
   BudgetCommitteeRecord,
   Opportunity,
   PodMemoryRecord,
+  PortfolioPerformanceSnapshot,
   PortfolioSnapshot,
   TradeWatchTask
 } from "@/lib/domain";
@@ -127,6 +128,37 @@ export async function loadPortfolio(): Promise<PortfolioSnapshot | undefined> {
   const client = await getRedisClient();
   const value = await client.get(redisKeys.portfolio());
   return value ? (JSON.parse(value) as PortfolioSnapshot) : undefined;
+}
+
+export async function savePortfolioPerformanceSnapshot(record: PortfolioPerformanceSnapshot) {
+  const client = await requireRedisForTrading();
+  await client.hSet(redisKeys.portfolioSnapshot(record.id), {
+    payload: JSON.stringify(record),
+    portfolioId: record.portfolioId,
+    reason: record.reason,
+    netLiquidationValue: String(record.netLiquidationValue),
+    totalPnl: String(record.totalPnl),
+    openExposure: String(record.openExposure),
+    createdAt: record.createdAt
+  });
+  await client.zAdd(redisKeys.portfolioSnapshotIndex(), {
+    score: Date.parse(record.createdAt),
+    value: record.id
+  });
+  await client.zRemRangeByRank(redisKeys.portfolioSnapshotIndex(), 0, -10001);
+  await publishEvent("portfolio", { type: "portfolio.performance_snapshot", snapshot: record });
+}
+
+export async function loadPortfolioPerformanceSnapshots(limit = 1000): Promise<PortfolioPerformanceSnapshot[]> {
+  const client = await getRedisClient();
+  const ids = await client.zRange(redisKeys.portfolioSnapshotIndex(), 0, Math.max(0, limit - 1), { REV: true });
+  const rows = await Promise.all(ids.map((id) => client.hGet(redisKeys.portfolioSnapshot(id), "payload")));
+  return rows.filter(Boolean).map((row) => JSON.parse(row as string) as PortfolioPerformanceSnapshot);
+}
+
+export async function loadLatestPortfolioPerformanceSnapshot(): Promise<PortfolioPerformanceSnapshot | undefined> {
+  const [latest] = await loadPortfolioPerformanceSnapshots(1);
+  return latest;
 }
 
 export async function saveOpportunity(opportunity: Opportunity) {

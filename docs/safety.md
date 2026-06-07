@@ -123,6 +123,8 @@ Paper accounting separates:
 - `realizedPnl`: closed plus settled PnL.
 - `totalPnl`: realized plus unrealized PnL.
 
+The performance analytics ledger appends Redis-backed `PortfolioPerformanceSnapshot` records on paper fills, closes, settlements, mark refreshes, and daemon ticks. Each record stores net liquidation value, return versus the previous sample, PnL deltas, exposure deltas, sector exposure, counts, and trace/cycle/order context when available. `GET /api/portfolio/analytics?limit=1000` returns the series plus summary statistics for later Sharpe, drawdown, and return analysis.
+
 Settlements record outcome, settlement price, realized PnL, forecast probability, Brier score, and calibration bucket. They also emit a postmortem audit event. `POST /api/agents/reconciliation/run` and the daemon reconciliation worker poll Kalshi market detail for open paper positions and auto-settle only when Kalshi marks a market settled and the resolved side is inferable from terminal prices. Ambiguous closed/settled markets are audited and left open for operator review.
 
 ## Production Access Control

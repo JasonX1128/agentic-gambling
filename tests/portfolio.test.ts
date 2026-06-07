@@ -1,16 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PortfolioSnapshot, TradeOrder } from "@/lib/domain";
+import type { PortfolioPerformanceSnapshot, PortfolioSnapshot, TradeOrder } from "@/lib/domain";
 import { applyPaperClose, applyPaperFill, applyPaperSettlement, getPortfolioSnapshot, markPortfolioToMarket } from "@/lib/portfolio/engine";
 import { demoMarkets } from "@/lib/data/seeds";
 
 const store = vi.hoisted(() => ({
-  snapshot: undefined as PortfolioSnapshot | undefined
+  snapshot: undefined as PortfolioSnapshot | undefined,
+  performanceSnapshots: [] as PortfolioPerformanceSnapshot[]
 }));
 
 vi.mock("@/lib/redis/coordination", () => ({
   loadPortfolio: vi.fn(() => Promise.resolve(store.snapshot)),
   savePortfolio: vi.fn((snapshot: PortfolioSnapshot) => {
     store.snapshot = snapshot;
+    return Promise.resolve();
+  }),
+  loadLatestPortfolioPerformanceSnapshot: vi.fn(() => Promise.resolve(store.performanceSnapshots[0])),
+  savePortfolioPerformanceSnapshot: vi.fn((snapshot: PortfolioPerformanceSnapshot) => {
+    store.performanceSnapshots = [snapshot, ...store.performanceSnapshots];
     return Promise.resolve();
   })
 }));
@@ -42,6 +48,7 @@ function order(overrides: Partial<TradeOrder> = {}): TradeOrder {
 describe("portfolio accounting", () => {
   beforeEach(() => {
     store.snapshot = undefined;
+    store.performanceSnapshots = [];
   });
 
   it("separates unrealized PnL from realized and total PnL after a mark refresh", async () => {
@@ -62,6 +69,8 @@ describe("portfolio accounting", () => {
     expect(portfolio.realizedPnl).toBe(0);
     expect(portfolio.totalPnl).toBe(1);
     expect(portfolio.netLiquidationValue).toBe(10001);
+    expect(store.performanceSnapshots.map((snapshot) => snapshot.reason)).toEqual(["mark", "fill"]);
+    expect(store.performanceSnapshots[0].returnFraction).toBeCloseTo(0.0001);
   });
 
   it("moves closed paper trades into realized closed PnL", async () => {

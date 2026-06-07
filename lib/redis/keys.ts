@@ -9,6 +9,8 @@ export const redisKeys = {
   taskStream: (name: string) => redisKey("tasks", name),
   eventChannel: (name: string) => redisKey("events", name),
   portfolio: (portfolioId = "main") => redisKey("portfolio", portfolioId),
+  portfolioSnapshot: (id: string) => redisKey("portfolio", "snapshot", id),
+  portfolioSnapshotIndex: () => redisKey("portfolio", "snapshots"),
   positions: (portfolioId = "main") => redisKey("portfolio", portfolioId, "positions"),
   orders: (portfolioId = "main") => redisKey("portfolio", portfolioId, "orders"),
   audit: () => redisKey("audit"),

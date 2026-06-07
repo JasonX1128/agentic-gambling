@@ -300,6 +300,52 @@ export type PortfolioSnapshot = {
   updatedAt: string;
 };
 
+export type PortfolioSnapshotReason = "fill" | "close" | "settlement" | "mark" | "daemon_tick" | "normalization" | "manual";
+
+export type PortfolioPerformanceSnapshot = {
+  id: string;
+  portfolioId: string;
+  reason: PortfolioSnapshotReason;
+  mode: TradingMode;
+  netLiquidationValue: number;
+  previousNetLiquidationValue?: number;
+  returnFraction?: number;
+  pnlDelta?: number;
+  openExposure: number;
+  exposureDelta?: number;
+  totalPnl: number;
+  realizedPnl: number;
+  unrealizedPnl: number;
+  closedPnl: number;
+  settledPnl: number;
+  cash: number;
+  availableCapital: number;
+  positionCount: number;
+  orderCount: number;
+  settlementCount: number;
+  sectorExposure: Record<string, number>;
+  traceId?: string;
+  cycleId?: string;
+  orderId?: string;
+  ticker?: string;
+  createdAt: string;
+};
+
+export type PortfolioAnalyticsSummary = {
+  snapshotCount: number;
+  firstAt?: string;
+  lastAt?: string;
+  currentNetLiquidationValue?: number;
+  totalReturnFraction?: number;
+  meanReturnFraction?: number;
+  returnVolatilityFraction?: number;
+  sampleSharpe?: number;
+  maxDrawdownFraction?: number;
+  maxDrawdownDollars?: number;
+  positiveReturnRate?: number;
+  updatedAt: string;
+};
+
 export type ActivityEvent = {
   id: string;
   type:

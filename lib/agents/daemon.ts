@@ -1,6 +1,6 @@
 import type { ActivityEvent, Market } from "@/lib/domain";
 import { getAgentAutomationConfig } from "@/lib/config/env";
-import { getPortfolioSnapshot, markPortfolioToMarket } from "@/lib/portfolio/engine";
+import { getPortfolioSnapshot, markPortfolioToMarket, recordPortfolioPerformanceSnapshot } from "@/lib/portfolio/engine";
 import { getMarkets } from "@/lib/services/market-service";
 import { acquireLock, appendAuditEvent, enqueueTask, publishEvent, releaseLock } from "@/lib/redis/coordination";
 import { ensureFundWorkerGroups, runFundWorkersOnce, type WorkerRunResult } from "@/lib/agents/workers";
@@ -41,6 +41,7 @@ export async function runPaperTradingDaemonTick(): Promise<PaperDaemonTickResult
     try {
       const marketResult = await getMarkets();
       const marked = await markPortfolioToMarket(marketResult.markets).catch(() => getPortfolioSnapshot());
+      await recordPortfolioPerformanceSnapshot(marked, { reason: "daemon_tick", cycleId: tickId });
       await ensureFundWorkerGroups();
       await enqueueDaemonTasks(tickId, marketResult.markets, marked.positions.length);
       const workerRun = await runFundWorkersOnce({

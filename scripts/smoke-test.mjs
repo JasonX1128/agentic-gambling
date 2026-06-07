@@ -27,6 +27,7 @@ const requiredFiles = [
   "app/api/agents/policy/route.ts",
   "app/api/health/route.ts",
   "app/api/portfolio/mark-to-market/route.ts",
+  "app/api/portfolio/analytics/route.ts",
   "app/api/trades/[id]/close/route.ts",
   "app/api/trades/[id]/settle/route.ts",
   "app/api/trades/[id]/live-preview/route.ts",
@@ -59,6 +60,8 @@ const nextConfig = fs.readFileSync("next.config.mjs", "utf8");
 const copilotRoute = fs.readFileSync("app/api/copilotkit/[[...slug]]/route.ts", "utf8");
 const copilotActions = fs.readFileSync("components/copilot/EventFundCopilotActions.tsx", "utf8");
 const portfolio = fs.readFileSync("lib/portfolio/engine.ts", "utf8");
+const portfolioAnalytics = fs.readFileSync("lib/portfolio/analytics.ts", "utf8");
+const redisCoordination = fs.readFileSync("lib/redis/coordination.ts", "utf8");
 const daemon = fs.readFileSync("lib/agents/daemon.ts", "utf8");
 const workers = fs.readFileSync("lib/agents/workers.ts", "utf8");
 const learning = fs.readFileSync("lib/agents/learning.ts", "utf8");
@@ -97,6 +100,7 @@ const checks = [
   ["CopilotKit action surface includes pod governance query", copilotActions.includes("queryPodGovernance")],
   ["CopilotKit action surface includes operating policy tools", copilotActions.includes("readAgentOperatingPolicy") && copilotActions.includes("applyAgentPolicyPatch")],
   ["portfolio accounting separates settled and unrealized PnL", portfolio.includes("settledPnl") && portfolio.includes("unrealizedPnl")],
+  ["portfolio analytics snapshots persist return series", portfolio.includes("recordPortfolioPerformanceSnapshot") && portfolioAnalytics.includes("sampleSharpe") && redisCoordination.includes("savePortfolioPerformanceSnapshot")],
   ["continuous paper daemon enqueues worker tasks", daemon.includes("runPaperTradingDaemonTick") && daemon.includes("enqueueDaemonTasks")],
   ["Redis Stream workers consume fund queues", workers.includes("readTaskBatch") && workers.includes("ackTask") && workers.includes("runPaperCycle")],
   ["cross-pod collaboration worker shares analyst check-ins", workers.includes("cross_pod_checkin") && daemon.includes("cross_pod_checkin") && policyConfig.includes("crossPodCollaboration")],

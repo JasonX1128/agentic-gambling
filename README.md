@@ -19,6 +19,7 @@ This repo was created as a greenfield implementation in an empty workspace.
 - Executive roster governance: required seats can be replaced, but protected control functions such as compliance, risk, and execution cannot be left vacant.
 - Quant scoring: market-implied probability, fair probability, EV, confidence, liquidity quality, capped Kelly sizing, Brier/calibration helpers.
 - Paper trading engine that updates Redis-backed portfolio state.
+- Redis-backed portfolio performance snapshots for later Sharpe, return, drawdown, exposure, and sector analytics.
 - Post-fill trade watch tasks for invalidation checks, public-signal changes, and early close/resize review.
 - CIO-driven paper cycle endpoint that allocates per-pod paper capital, reserves probes for incubating pods, enqueues Redis Stream tasks, writes audit events, and executes the approved paper slate.
 - Continuous paper-trading daemon that scans markets, marks positions, enqueues Redis Stream work, runs bounded workers, and audits each tick.
@@ -263,6 +264,12 @@ PnL semantics:
 - `realizedPnl`: `closedPnl + settledPnl`.
 - `totalPnl`: `realizedPnl + unrealizedPnl`.
 
+Performance analytics ledger:
+
+- Paper fills, paper closes, paper settlements, mark refreshes, and daemon ticks append `PortfolioPerformanceSnapshot` records to Redis.
+- `GET /api/portfolio/analytics?limit=1000` returns the latest snapshot series plus a summary with total return, mean return, return volatility, sample Sharpe, max drawdown, positive-return rate, exposure, and PnL fields.
+- The ledger is designed for later detailed analysis; Sharpe quality depends on enough regularly sampled snapshots and settled/marked positions.
+
 Dynamic pod governance:
 
 - Research scouts continuously classify live Kalshi markets into pod themes.
@@ -312,6 +319,7 @@ Agent operating policy:
 - `POST /api/trades/:ticker/settle`
 - `POST /api/trades/:id/execute`
 - `GET /api/portfolio`
+- `GET /api/portfolio/analytics`
 - `POST /api/portfolio/mark-to-market`
 - `GET /api/audit`
 - `POST /api/risk/live-trading-gate`

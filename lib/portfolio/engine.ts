@@ -9,8 +9,15 @@ import type {
   TradeOrder,
   TradeSource
 } from "@/lib/domain";
+import type { PortfolioSnapshotMeta } from "@/lib/portfolio/analytics";
+import { buildPortfolioPerformanceSnapshot } from "@/lib/portfolio/analytics";
 import { brierScore } from "@/lib/quant/scoring";
-import { loadPortfolio, savePortfolio } from "@/lib/redis/coordination";
+import {
+  loadLatestPortfolioPerformanceSnapshot,
+  loadPortfolio,
+  savePortfolio,
+  savePortfolioPerformanceSnapshot
+} from "@/lib/redis/coordination";
 
 const STARTING_CAPITAL = 10000;
 
@@ -62,7 +69,7 @@ export async function applyPaperFill(order: TradeOrder, markPrice: number): Prom
     filledAt: new Date().toISOString()
   };
   portfolio.orders = [filled, ...portfolio.orders].slice(0, 150);
-  return saveRecalculated(portfolio);
+  return saveRecalculated(portfolio, { reason: "fill", orderId: filled.id, ticker: order.ticker, traceId: order.traceId });
 }
 
 export async function applyPaperClose(input: {
@@ -102,7 +109,7 @@ export async function applyPaperClose(input: {
     portfolio.positions = portfolio.positions.filter((item) => item.ticker !== position.ticker);
   }
   portfolio.orders = [order, ...portfolio.orders].slice(0, 150);
-  return { order, portfolio: await saveRecalculated(portfolio), realizedPnl };
+  return { order, portfolio: await saveRecalculated(portfolio, { reason: "close", orderId: order.id, ticker: order.ticker }), realizedPnl };
 }
 
 export async function applyPaperSettlement(input: {
@@ -168,7 +175,7 @@ export async function applyPaperSettlement(input: {
   portfolio.settledPnl = money((portfolio.settledPnl ?? 0) + realizedPnl);
   portfolio.settlements = [settlement, ...(portfolio.settlements ?? [])].slice(0, 150);
   portfolio.orders = [order, ...portfolio.orders].slice(0, 150);
-  return { settlement, order, portfolio: await saveRecalculated(portfolio) };
+  return { settlement, order, portfolio: await saveRecalculated(portfolio, { reason: "settlement", orderId: order.id, ticker: order.ticker }) };
 }
 
 export async function markPortfolioToMarket(markets: Market[]): Promise<PortfolioSnapshot> {
@@ -186,7 +193,16 @@ export async function markPortfolioToMarket(markets: Market[]): Promise<Portfoli
       changed = true;
     }
   }
-  return changed ? saveRecalculated(portfolio) : portfolio;
+  if (changed) return saveRecalculated(portfolio, { reason: "mark" });
+  await recordPortfolioPerformanceSnapshot(portfolio, { reason: "mark" });
+  return portfolio;
+}
+
+export async function recordPortfolioPerformanceSnapshot(snapshot: PortfolioSnapshot, meta: PortfolioSnapshotMeta) {
+  const previous = await loadLatestPortfolioPerformanceSnapshot();
+  const record = buildPortfolioPerformanceSnapshot(snapshot, { ...meta, previous });
+  await savePortfolioPerformanceSnapshot(record);
+  return record;
 }
 
 function emptyPortfolio(): PortfolioSnapshot {
@@ -246,9 +262,10 @@ function normalizePaperPortfolio(snapshot: PortfolioSnapshot): { snapshot: Portf
   };
 }
 
-async function saveRecalculated(portfolio: PortfolioSnapshot): Promise<PortfolioSnapshot> {
+async function saveRecalculated(portfolio: PortfolioSnapshot, snapshotMeta: PortfolioSnapshotMeta): Promise<PortfolioSnapshot> {
   const next = recalculatePortfolio(portfolio);
   await savePortfolio(next);
+  await recordPortfolioPerformanceSnapshot(next, snapshotMeta);
   return next;
 }
 
