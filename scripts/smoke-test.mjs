@@ -97,6 +97,7 @@ const checks = [
   ["portfolio accounting separates settled and unrealized PnL", portfolio.includes("settledPnl") && portfolio.includes("unrealizedPnl")],
   ["continuous paper daemon enqueues worker tasks", daemon.includes("runPaperTradingDaemonTick") && daemon.includes("enqueueDaemonTasks")],
   ["Redis Stream workers consume fund queues", workers.includes("readTaskBatch") && workers.includes("ackTask") && workers.includes("runPaperCycle")],
+  ["cross-pod collaboration worker shares analyst check-ins", workers.includes("cross_pod_checkin") && daemon.includes("cross_pod_checkin") && policyConfig.includes("crossPodCollaboration")],
   ["paper iteration defaults are faster", config.includes("PAPER_AGENT_MAX_TRADES_PER_CYCLE: z.coerce.number().default(60)") && config.includes("PAPER_DAEMON_INTERVAL_MS: z.coerce.number().default(60000)")],
   ["Kalshi market discovery paginates and scans production breadth", kalshiClient.includes("cursor") && config.includes("KALSHI_MARKET_SCAN_LIMIT") && config.includes("external-api.kalshi.com")],
   ["Kalshi market scans are cached", config.includes("KALSHI_MARKET_CACHE_TTL_MS") && marketService.includes("marketCache") && marketService.includes("pendingMarketScan")],

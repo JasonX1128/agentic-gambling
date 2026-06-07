@@ -5,15 +5,17 @@ Paper lifecycle accounting now includes mark refresh, close, settlement,
 realized/unrealized/settled PnL, and Brier/calibration records.
 Agent management now includes dynamic research scouts, pod proposals,
 analyst headcount changes, pod capital budgets, PIP/defense reviews, and
-sleeping scouts.
+sleeping scouts, plus cross-pod analyst check-ins for shared catalysts,
+duplicated-risk warnings, and things adjacent pods should keep in mind.
 Agent prompts, pod governance, sector rules, analyst allocation, pod capital
-budgeting, scout cadence, and paper-cycle scoring now read from
-config/agent-operating-policy.json with permissioned agent proposal/apply paths
-and Redis audit requirements.
+budgeting, cross-pod collaboration cadence, scout cadence, and paper-cycle
+scoring now read from config/agent-operating-policy.json with permissioned
+agent proposal/apply paths and Redis audit requirements.
 Continuous paper trading now has a locked daemon tick, Redis Stream workers,
 agent learning proposals, conservative Kalshi settlement reconciliation,
-event-cluster risk checks, executive committee actions, live dashboard refresh,
-and production operator-token access control for mutating routes.
+event-cluster risk checks, cross-pod check-in worker tasks, executive committee
+actions, live dashboard refresh, and production operator-token access control
+for mutating routes.
 Iteration speed is increased with significantly larger paper slates, one-minute
 daemon defaults, larger worker batches, lower pod incubation friction,
 incubating-pod probe reservations, performance-adjusted pod budgets, and a

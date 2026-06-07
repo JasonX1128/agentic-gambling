@@ -29,6 +29,12 @@ const sectorRuleSchema = z.object({
   priority: z.number().optional()
 });
 
+const crossPodRelationshipRuleSchema = z.object({
+  fromSectorIncludes: z.array(z.string().min(1)).min(1),
+  toSectorIncludes: z.array(z.string().min(1)).min(1),
+  rationale: z.string().min(1)
+});
+
 const lifecycleStatusSchema = z.enum(["scouting", "incubating", "active", "pip", "defense", "sleeping", "closed"]);
 
 const fundGovernanceSchema = z.object({
@@ -127,6 +133,14 @@ const fundGovernanceSchema = z.object({
     maxConfidence: z.number(),
     proposalThreshold: z.number(),
     risks: z.array(z.string().min(1))
+  }),
+  crossPodCollaboration: z.object({
+    cadenceMinutes: z.number().positive(),
+    maxBriefings: z.number().positive(),
+    targetPodsPerBriefing: z.number().positive(),
+    minSourceMandateScore: z.number(),
+    sourceRoles: z.array(z.string().min(1)).min(1),
+    relationshipRules: z.array(crossPodRelationshipRuleSchema)
   }),
   scoutMessages: z.object({
     noMarkets: z.string().min(1),
@@ -437,6 +451,35 @@ const fallbackPolicy: AgentOperatingPolicy = {
       maxConfidence: 0.95,
       proposalThreshold: 0.42,
       risks: ["Thin liquidity can produce false paper edge", "Settlement rules must stay machine-readable"]
+    },
+    crossPodCollaboration: {
+      cadenceMinutes: 30,
+      maxBriefings: 8,
+      targetPodsPerBriefing: 3,
+      minSourceMandateScore: 45,
+      sourceRoles: ["Data Analyst", "News Analyst", "Rules Analyst", "Market Microstructure Analyst", "Contrarian Agent", "Calibration Agent"],
+      relationshipRules: [
+        {
+          fromSectorIncludes: ["sports"],
+          toSectorIncludes: ["sports", "climate"],
+          rationale: "Game-state, injury, weather, schedule, and liquidity reads often transfer across sports pods."
+        },
+        {
+          fromSectorIncludes: ["macro"],
+          toSectorIncludes: ["crypto", "politics"],
+          rationale: "Rates, inflation, and policy expectations can move risk appetite and adjacent event pricing."
+        },
+        {
+          fromSectorIncludes: ["climate"],
+          toSectorIncludes: ["sports", "macro"],
+          rationale: "Weather and climate catalysts can affect event logistics, turnout, commodities, and totals markets."
+        },
+        {
+          fromSectorIncludes: ["crypto"],
+          toSectorIncludes: ["macro"],
+          rationale: "Digital-asset volatility can be a live risk-sentiment signal for macro event contracts."
+        }
+      ]
     },
     scoutMessages: {
       noMarkets: "No Kalshi markets available for a new pod proposal.",

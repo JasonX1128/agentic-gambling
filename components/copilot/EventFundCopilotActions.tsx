@@ -88,6 +88,7 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
       researchScouts: data.researchScouts,
       podProposals: data.podProposals,
       executiveReviews: data.executiveReviews,
+      crossPodBriefings: data.crossPodBriefings,
       policySummary: data.policySummary
     } as unknown as JsonSerializable;
 

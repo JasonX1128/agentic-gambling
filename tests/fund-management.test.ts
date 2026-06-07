@@ -155,6 +155,30 @@ describe("fund operating state", () => {
     expect(state.pods[0].mandate.budgetDecision).toMatch(/Active budget/i);
   });
 
+  it("creates cross-pod analyst briefings for collaborative pod check-ins", () => {
+    const baseball = market({
+      ticker: "KXMLBTOTAL-26JUN061415CINSTL-15",
+      title: "Cincinnati vs St. Louis Total Runs?"
+    });
+    const macro = market({
+      id: "macro",
+      ticker: "KXFED-26JUN-FEDCUT",
+      title: "Will the Fed cut rates?",
+      sector: "macro",
+      category: "Economics"
+    });
+    const state = buildFundOperatingState({
+      markets: [baseball, macro],
+      opportunities: [opportunity(baseball), opportunity(macro)],
+      portfolio: portfolio()
+    });
+
+    expect(state.crossPodBriefings.length).toBeGreaterThan(0);
+    expect(state.crossPodBriefings[0].toSectors.length).toBeGreaterThan(0);
+    expect(state.crossPodBriefings[0].watchItems.length).toBeGreaterThan(0);
+    expect(state.crossPodBriefings[0].proposedActions.length).toBeGreaterThan(0);
+  });
+
   it("puts losing pods on executive defense", () => {
     const row = market();
     const state = buildFundOperatingState({

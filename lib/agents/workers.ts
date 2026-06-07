@@ -1,8 +1,12 @@
 import type { ActivityEvent } from "@/lib/domain";
+import { buildFundOperatingState } from "@/lib/agents/fund-management";
+import { getOpportunities } from "@/lib/agents/orchestrator";
 import { runExecutiveCommitteeReview } from "@/lib/agents/executive-committee";
 import { runAgentLearningLoop } from "@/lib/agents/learning";
 import { runPaperCycle } from "@/lib/agents/paper-cycle";
 import { reconcilePaperSettlements } from "@/lib/agents/reconciliation";
+import { getPortfolioSnapshot } from "@/lib/portfolio/engine";
+import { getMarkets } from "@/lib/services/market-service";
 import {
   ackTask,
   appendAuditEvent,
@@ -132,6 +136,22 @@ async function handleWorkerTask(task: RedisStreamTask): Promise<WorkerTaskResult
         )
       );
       return processed(task, kind, "Research scout task audited.");
+    }
+    if (kind === "cross_pod_checkin") {
+      const marketResult = await getMarkets();
+      const portfolio = await getPortfolioSnapshot();
+      const opportunities = await getOpportunities();
+      const state = buildFundOperatingState({ markets: marketResult.markets, opportunities, portfolio });
+      await appendAuditEvent(
+        auditEvent(
+          "agent_decision",
+          "Cross-Pod Collaboration Chair",
+          `Ran analyst check-ins: ${state.crossPodBriefings.length} cross-pod briefings shared across ${state.pods.length} pods.`,
+          state.crossPodBriefings.length ? "info" : "warning",
+          { briefings: state.crossPodBriefings.slice(0, 8), task: task.message }
+        )
+      );
+      return processed(task, kind, `Shared ${state.crossPodBriefings.length} cross-pod briefings.`);
     }
     if (kind === "risk_cluster_review") {
       await appendAuditEvent(

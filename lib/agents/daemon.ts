@@ -103,6 +103,12 @@ async function enqueueDaemonTasks(tickId: string, markets: Market[], positions: 
     markets: String(markets.length),
     createdAt
   });
+  await enqueueTask("research", {
+    kind: "cross_pod_checkin",
+    tickId,
+    markets: String(markets.length),
+    createdAt
+  });
   await enqueueTask("risk", {
     kind: "risk_cluster_review",
     tickId,

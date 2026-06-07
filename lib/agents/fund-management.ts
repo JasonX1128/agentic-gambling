@@ -1,5 +1,6 @@
 import type {
   AgentNode,
+  CrossPodBriefing,
   ExecutiveReview,
   Market,
   Opportunity,
@@ -25,6 +26,7 @@ export function buildFundOperatingState(input: {
   researchScouts: ResearchScout[];
   podProposals: PodProposal[];
   executiveReviews: ExecutiveReview[];
+  crossPodBriefings: CrossPodBriefing[];
 } {
   const podKeys = Array.from(new Set([
     ...input.markets.map((market) => classifyPodSector(market)),
@@ -39,6 +41,7 @@ export function buildFundOperatingState(input: {
     .sort((a, b) => b.mandate.mandateScore - a.mandate.mandateScore);
   const podProposals = buildPodProposals(pods, input.markets, input.opportunities);
   const researchScouts = buildResearchScouts(pods, podProposals, input.markets);
+  const crossPodBriefings = buildCrossPodBriefings(pods, input.markets, input.opportunities);
   const executiveReviews = pods
     .filter((pod) => pod.lifecycleStatus === "pip" || pod.lifecycleStatus === "defense" || pod.mandate.totalPnl < 0)
     .map((pod) => ({
@@ -55,7 +58,7 @@ export function buildFundOperatingState(input: {
           : getFundGovernancePolicy().executiveReviewDecisions.pip,
       dueAt: pod.mandate.defenseDueAt ?? pod.mandate.nextReviewAt
     }));
-  return { pods, researchScouts, podProposals, executiveReviews };
+  return { pods, researchScouts, podProposals, executiveReviews, crossPodBriefings };
 }
 
 export function classifyPodSector(market: Market): string {
@@ -270,6 +273,117 @@ function buildResearchScouts(pods: SectorPod[], proposals: PodProposal[], market
   });
 }
 
+function buildCrossPodBriefings(pods: SectorPod[], markets: Market[], opportunities: Opportunity[]): CrossPodBriefing[] {
+  const collaboration = getFundGovernancePolicy().crossPodCollaboration;
+  const viablePods = pods
+    .filter((pod) => pod.lifecycleStatus !== "sleeping" && pod.lifecycleStatus !== "closed")
+    .filter((pod) => pod.mandate.mandateScore >= collaboration.minSourceMandateScore || pod.approvedCandidates > 0)
+    .sort((a, b) => podCollaborationScore(b) - podCollaborationScore(a));
+  return viablePods.flatMap((pod, index) => {
+    const targets = crossPodTargets(pod, pods).slice(0, collaboration.targetPodsPerBriefing);
+    if (!targets.length) return [];
+    const podMarkets = markets.filter((market) => classifyPodSector(market) === pod.sector);
+    const podOpportunities = opportunities
+      .filter((opportunity) => classifyPodSector(opportunity.market) === pod.sector)
+      .sort((a, b) => b.rankScore - a.rankScore);
+    return [{
+      id: `brief-${slug(pod.sector)}-${index}`,
+      fromPodId: pod.id,
+      fromSector: pod.sector,
+      toPodIds: targets.map((target) => target.id),
+      toSectors: targets.map((target) => target.sector),
+      analystRole: collaboration.sourceRoles[index % collaboration.sourceRoles.length],
+      urgency: briefingUrgency(pod),
+      insight: crossPodInsight(pod, targets, podMarkets, podOpportunities),
+      watchItems: crossPodWatchItems(pod, targets, podOpportunities),
+      proposedActions: crossPodProposedActions(pod, targets),
+      relatedTickers: podOpportunities.slice(0, 3).map((opportunity) => opportunity.market.ticker),
+      createdAt: nowIso(),
+      nextCheckInAt: futureMinutes(collaboration.cadenceMinutes)
+    }];
+  }).slice(0, collaboration.maxBriefings);
+}
+
+function crossPodTargets(source: SectorPod, pods: SectorPod[]): SectorPod[] {
+  const rules = getFundGovernancePolicy().crossPodCollaboration.relationshipRules;
+  const explicitTargets = rules
+    .filter((rule) => rule.fromSectorIncludes.some((token) => source.sector.toLowerCase().includes(token.toLowerCase())))
+    .flatMap((rule) =>
+      pods.filter((pod) =>
+        pod.id !== source.id &&
+        pod.lifecycleStatus !== "sleeping" &&
+        pod.lifecycleStatus !== "closed" &&
+        rule.toSectorIncludes.some((token) => pod.sector.toLowerCase().includes(token.toLowerCase()))
+      )
+    );
+  const fallbackTargets = pods.filter((pod) => pod.id !== source.id && pod.lifecycleStatus !== "sleeping" && pod.lifecycleStatus !== "closed");
+  return uniquePods([...explicitTargets, ...fallbackTargets]).sort((a, b) => podCollaborationScore(b) - podCollaborationScore(a));
+}
+
+function crossPodInsight(source: SectorPod, targets: SectorPod[], markets: Market[], opportunities: Opportunity[]): string {
+  const bestOpportunity = opportunities[0];
+  const targetList = targets.map((target) => target.sector).join(", ");
+  const relationship = relationshipRationale(source.sector, targets.map((target) => target.sector));
+  if (bestOpportunity) {
+    return `${source.sector} sees ${source.approvedCandidates} approved candidates and top signal ${bestOpportunity.market.ticker}; ${targetList} should account for ${relationship}`;
+  }
+  return `${source.sector} is monitoring ${markets.length} live markets; ${targetList} should account for ${relationship}`;
+}
+
+function crossPodWatchItems(source: SectorPod, targets: SectorPod[], opportunities: Opportunity[]): string[] {
+  const bestOpportunity = opportunities[0];
+  const items = [
+    `${source.sector} budget ${source.mandate.capitalBudget}, deployed ${source.mandate.deployedCapital}, PnL ${source.mandate.totalPnl}.`,
+    `Target pods: ${targets.map((target) => target.sector).join(", ")}.`
+  ];
+  if (bestOpportunity) {
+    items.push(
+      `Top cross-read: ${bestOpportunity.market.title} has ${Math.abs(bestOpportunity.forecast.expectedValue * 100).toFixed(1)} point edge and ${timeToCloseLabel(bestOpportunity.market.closeTime)} to close.`
+    );
+  }
+  if (source.lifecycleStatus === "pip" || source.lifecycleStatus === "defense") {
+    items.push("Treat this pod's signal cautiously until its PnL review clears.");
+  }
+  return items;
+}
+
+function crossPodProposedActions(source: SectorPod, targets: SectorPod[]): string[] {
+  const actions = [
+    `Ask ${targets[0]?.sector ?? "target pod"} PM to compare settlement-rule ambiguity against ${source.sector}.`,
+    "Share liquidity/spread changes before the next CIO paper cycle."
+  ];
+  if (source.lifecycleStatus === "incubating" || source.lifecycleStatus === "scouting") {
+    actions.push("Use only seed-probe sizing until the cross-pod thesis survives first fill.");
+  }
+  if (source.mandate.totalPnl > 0) {
+    actions.push("Let receiving pods test whether the same public catalyst explains their own mispriced contracts.");
+  }
+  return actions;
+}
+
+function briefingUrgency(pod: SectorPod): CrossPodBriefing["urgency"] {
+  if (pod.lifecycleStatus === "pip" || pod.lifecycleStatus === "defense") return "escalate";
+  if (pod.mandate.totalPnl !== 0 || pod.approvedCandidates >= 5) return "watch";
+  return "routine";
+}
+
+function relationshipRationale(fromSector: string, toSectors: string[]): string {
+  const rules = getFundGovernancePolicy().crossPodCollaboration.relationshipRules;
+  const rule = rules.find((candidate) =>
+    candidate.fromSectorIncludes.some((token) => fromSector.toLowerCase().includes(token.toLowerCase())) &&
+    toSectors.some((sector) => candidate.toSectorIncludes.some((token) => sector.toLowerCase().includes(token.toLowerCase())))
+  );
+  return rule?.rationale ?? "shared liquidity, catalysts, duplicated exposure, or public-information assumptions.";
+}
+
+function podCollaborationScore(pod: SectorPod): number {
+  return pod.mandate.mandateScore + pod.approvedCandidates * 5 + Math.max(0, pod.mandate.totalPnl) * 2 - Math.max(0, -pod.mandate.totalPnl) * 3;
+}
+
+function uniquePods(pods: SectorPod[]): SectorPod[] {
+  return [...new Map(pods.map((pod) => [pod.id, pod])).values()];
+}
+
 function podPnlSnapshot(podKey: string, portfolio: PortfolioSnapshot, markets: Market[]) {
   const marketMap = new Map(markets.map((market) => [market.ticker, market]));
   const positionRows = portfolio.positions.filter((position) => classifyTickerPod(position.ticker, position.sector, marketMap.get(position.ticker)?.title) === podKey);
@@ -427,6 +541,22 @@ function renderTemplate(template: string, values: Record<string, string | number
 
 function futureHours(hours: number) {
   return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+}
+
+function futureMinutes(minutes: number) {
+  return new Date(Date.now() + minutes * 60 * 1000).toISOString();
+}
+
+function timeToCloseLabel(closeTime?: string): string {
+  if (!closeTime) return "unknown horizon";
+  const ms = Date.parse(closeTime) - Date.now();
+  if (!Number.isFinite(ms)) return "unknown horizon";
+  if (ms <= 0) return "closed";
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours}h`;
+  return `${Math.round(hours / 24)}d`;
 }
 
 function slug(value: string) {

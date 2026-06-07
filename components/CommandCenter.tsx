@@ -23,6 +23,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type {
   AgentNode,
+  CrossPodBriefing,
   DemoRun,
   ExecutiveReview,
   IntegrationStatus,
@@ -303,7 +304,12 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
             </Panel>
 
             <Panel title="Research Pipeline & Pod Governance" icon={<SquareActivity className="h-4 w-4" />}>
-              <GovernancePanel scouts={data.researchScouts} proposals={data.podProposals} reviews={data.executiveReviews} />
+              <GovernancePanel
+                scouts={data.researchScouts}
+                proposals={data.podProposals}
+                reviews={data.executiveReviews}
+                briefings={data.crossPodBriefings}
+              />
             </Panel>
 
             <Panel title="Execution Tape & Audit" icon={<ClipboardCheck className="h-4 w-4" />} id="execution-panel">
@@ -388,14 +394,40 @@ function PodCard({ pod }: { pod: SectorPod }) {
 function GovernancePanel({
   scouts,
   proposals,
-  reviews
+  reviews,
+  briefings
 }: {
   scouts: ResearchScout[];
   proposals: PodProposal[];
   reviews: ExecutiveReview[];
+  briefings: CrossPodBriefing[];
 }) {
   return (
     <div className="space-y-4 text-xs">
+      <div>
+        <div className="mb-2 font-semibold text-slate-700">Cross-pod check-ins</div>
+        {briefings.slice(0, 4).map((briefing) => (
+          <div key={briefing.id} className="mb-2 rounded-md border border-line bg-slate-50 p-2 last:mb-0">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="break-words font-semibold">{briefing.fromSector} / {briefing.toSectors.join(", ")}</div>
+                <div className="font-mono text-[11px] text-slate-500">{briefing.analystRole}</div>
+              </div>
+              <StatusPill tone={briefing.urgency === "escalate" ? "danger" : briefing.urgency === "watch" ? "warning" : "info"}>
+                {briefing.urgency}
+              </StatusPill>
+            </div>
+            <div className="mt-1 break-words text-slate-700">{briefing.insight}</div>
+            <div className="mt-2 space-y-1 text-slate-600">
+              {briefing.watchItems.slice(0, 2).map((item) => (
+                <div key={item} className="break-words">- {item}</div>
+              ))}
+            </div>
+            <div className="mt-2 font-mono text-[11px] text-slate-500">next {new Date(briefing.nextCheckInAt).toLocaleTimeString()}</div>
+          </div>
+        ))}
+        {briefings.length === 0 ? <div className="text-slate-500">No cross-pod briefings yet; pods need more live markets or approved candidates.</div> : null}
+      </div>
       <div>
         <div className="mb-2 font-semibold text-slate-700">Research scouts</div>
         <div className="grid grid-cols-2 gap-2">

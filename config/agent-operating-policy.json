@@ -595,6 +595,61 @@
         "Pod must survive PnL review after initial samples"
       ]
     },
+    "crossPodCollaboration": {
+      "cadenceMinutes": 30,
+      "maxBriefings": 8,
+      "targetPodsPerBriefing": 3,
+      "minSourceMandateScore": 45,
+      "sourceRoles": [
+        "Data Analyst",
+        "News Analyst",
+        "Rules Analyst",
+        "Market Microstructure Analyst",
+        "Contrarian Agent",
+        "Calibration Agent"
+      ],
+      "relationshipRules": [
+        {
+          "fromSectorIncludes": [
+            "sports"
+          ],
+          "toSectorIncludes": [
+            "sports",
+            "climate"
+          ],
+          "rationale": "Game-state, injury, weather, schedule, and liquidity reads often transfer across sports pods."
+        },
+        {
+          "fromSectorIncludes": [
+            "macro"
+          ],
+          "toSectorIncludes": [
+            "crypto",
+            "politics"
+          ],
+          "rationale": "Rates, inflation, and policy expectations can move risk appetite and adjacent event pricing."
+        },
+        {
+          "fromSectorIncludes": [
+            "climate"
+          ],
+          "toSectorIncludes": [
+            "sports",
+            "macro"
+          ],
+          "rationale": "Weather and climate catalysts can affect event logistics, turnout, commodities, and totals markets."
+        },
+        {
+          "fromSectorIncludes": [
+            "crypto"
+          ],
+          "toSectorIncludes": [
+            "macro"
+          ],
+          "rationale": "Digital-asset volatility can be a live risk-sentiment signal for macro event contracts."
+        }
+      ]
+    },
     "scoutMessages": {
       "noMarkets": "No Kalshi markets available for a new pod proposal.",
       "investigating": "Still investigating; no executive-ready pod proposal yet.",

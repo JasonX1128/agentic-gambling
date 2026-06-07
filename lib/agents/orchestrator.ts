@@ -37,6 +37,7 @@ export async function runDemoWorkflow(): Promise<DemoRun> {
       researchScouts: fundState.researchScouts,
       podProposals: fundState.podProposals,
       executiveReviews: fundState.executiveReviews,
+      crossPodBriefings: fundState.crossPodBriefings,
       policySummary: policySummary(),
       integrationStatus: status
     };

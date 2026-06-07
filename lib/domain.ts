@@ -402,6 +402,22 @@ export type ExecutiveReview = {
   dueAt: string;
 };
 
+export type CrossPodBriefing = {
+  id: string;
+  fromPodId: string;
+  fromSector: string;
+  toPodIds: string[];
+  toSectors: string[];
+  analystRole: string;
+  urgency: "routine" | "watch" | "escalate";
+  insight: string;
+  watchItems: string[];
+  proposedActions: string[];
+  relatedTickers: string[];
+  createdAt: string;
+  nextCheckInAt: string;
+};
+
 export type PaperCycleResult = {
   cycleId: string;
   evaluated: number;
@@ -454,6 +470,7 @@ export type DemoRun = {
   researchScouts: ResearchScout[];
   podProposals: PodProposal[];
   executiveReviews: ExecutiveReview[];
+  crossPodBriefings: CrossPodBriefing[];
   policySummary: AgentOperatingPolicySummary;
   integrationStatus: IntegrationStatus[];
 };
