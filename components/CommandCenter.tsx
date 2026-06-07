@@ -12,11 +12,13 @@ import {
   ClipboardCheck,
   Gauge,
   Landmark,
+  Menu,
   Search,
   ShieldAlert,
   SquareActivity,
   StopCircle,
-  WalletCards
+  WalletCards,
+  X
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type {
@@ -42,6 +44,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
   const [opportunityFilter, setOpportunityFilter] = useState("");
   const [expandedMarketId, setExpandedMarketId] = useState<string>();
   const [expandedOpportunityId, setExpandedOpportunityId] = useState<string>();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -100,22 +103,42 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
     <Providers>
     <main id="command-top" className="min-h-screen bg-[#eef1f5] text-ink">
       <EventFundCopilotActions data={data} />
-      <div className="grid min-h-screen grid-cols-[220px_1fr]">
-        <aside className="border-r border-line bg-white">
-          <div className="border-b border-line px-4 py-4">
-            <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">EventFund OS</div>
-            <div className="mt-1 text-lg font-semibold">Command Center</div>
+      <div className={`grid min-h-screen ${sidebarOpen ? "grid-cols-[240px_minmax(0,1fr)]" : "grid-cols-[64px_minmax(0,1fr)]"}`}>
+        <aside className="self-start border-r border-line bg-white">
+          <div className={`border-b border-line ${sidebarOpen ? "px-4 py-4" : "px-2 py-3"}`}>
+            <div className="flex items-start justify-between gap-2">
+              {sidebarOpen ? (
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">EventFund OS</div>
+                  <div className="mt-1 text-lg font-semibold">Command Center</div>
+                </div>
+              ) : null}
+              <button
+                aria-label={sidebarOpen ? "Collapse sidebar" : "Open sidebar"}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-white text-slate-600 hover:bg-slate-100"
+                onClick={() => setSidebarOpen((open) => !open)}
+                title={sidebarOpen ? "Collapse sidebar" : "Open sidebar"}
+                type="button"
+              >
+                {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              </button>
+            </div>
+            {!sidebarOpen ? (
+              <div className="sr-only">EventFund OS Command Center</div>
+            ) : null}
           </div>
-          <nav className="space-y-1 px-3 py-4 text-sm">
+          <nav className={`${sidebarOpen ? "px-3" : "px-2"} space-y-1 py-4 text-sm`}>
             {navItems.map(([label, Icon, targetId]) => (
               <button
                 key={String(label)}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-slate-700 hover:bg-slate-100"
+                aria-label={label}
+                className={`flex w-full items-center gap-2 rounded-md py-2 text-left text-slate-700 hover:bg-slate-100 ${sidebarOpen ? "px-3" : "justify-center px-0"}`}
                 onClick={() => scrollToSection(targetId)}
+                title={label}
                 type="button"
               >
                 <Icon className="h-4 w-4" />
-                {label}
+                {sidebarOpen ? <span className="min-w-0 truncate">{label}</span> : null}
               </button>
             ))}
           </nav>
@@ -455,30 +478,25 @@ function MarketCard({ market, expanded, onToggle }: { market: Market; expanded: 
     <div className="rounded-md border border-line bg-white text-xs shadow-sm">
       <button
         aria-expanded={expanded}
-        className="flex w-full items-start gap-3 px-3 py-2 text-left hover:bg-slate-50"
+        className="w-full px-3 py-2 text-left hover:bg-slate-50"
         onClick={onToggle}
         type="button"
       >
-        <span className="mt-0.5 text-slate-400">
-          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 font-semibold text-slate-800">{market.title}</span>
-          <span className="mt-1 block truncate font-mono text-[11px] text-slate-500">{market.ticker}</span>
-        </span>
-        <span className="grid w-[150px] shrink-0 grid-cols-2 gap-2 text-right">
-          <span>
-            <span className="block text-slate-500">Yes</span>
-            <span className="font-mono font-semibold">{market.yesBid}/{market.yesAsk}</span>
+        <span className="flex items-start gap-2">
+          <span className="mt-0.5 shrink-0 text-slate-400">
+            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </span>
-          <span>
-            <span className="block text-slate-500">Liq</span>
-            <span className="font-mono font-semibold">{compactNumber(market.liquidity)}</span>
-          </span>
+          <span className="line-clamp-2 min-w-0 flex-1 font-semibold text-slate-800">{market.title}</span>
+        </span>
+        <span className="mt-2 grid grid-cols-3 gap-2 pl-6">
+          <CompactMetric label="Yes" value={`${market.yesBid}/${market.yesAsk}`} />
+          <CompactMetric label="Liq" value={compactNumber(market.liquidity)} />
+          <CompactMetric label="Ends" value={timeToCloseLabel(market.closeTime)} />
         </span>
       </button>
       {expanded ? (
         <div className="border-t border-slate-100 px-3 py-3">
+          <DetailLine label="Kalshi ID" value={market.ticker} />
           <div className="grid grid-cols-3 gap-2">
             <Cell label="Sector" value={market.sector} />
             <Cell label="Status" value={market.status} />
@@ -518,40 +536,31 @@ function OpportunityCard({
     <div className="rounded-md border border-line bg-white text-xs shadow-sm">
       <button
         aria-expanded={expanded}
-        className="flex w-full items-start gap-3 px-3 py-2 text-left hover:bg-slate-50"
+        className="w-full px-3 py-2 text-left hover:bg-slate-50"
         onClick={onToggle}
         type="button"
       >
-        <span className="mt-0.5 text-slate-400">
-          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </span>
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 font-mono text-[11px] font-semibold text-slate-600">
-          {rank}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 font-semibold text-slate-800">{opportunity.market.title}</span>
-          <span className="mt-1 block truncate font-mono text-[11px] text-slate-500">{opportunity.market.ticker}</span>
-        </span>
-        <span className="grid w-[170px] shrink-0 grid-cols-3 gap-2 text-right">
-          <span>
-            <span className="block text-slate-500">Side</span>
-            <span className="font-mono font-semibold">{opportunity.side.toUpperCase()}</span>
+        <span className="flex items-start gap-2">
+          <span className="mt-0.5 shrink-0 text-slate-400">
+            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </span>
-          <span>
-            <span className="block text-slate-500">Edge</span>
-            <span className="font-mono font-semibold">{(directionalEdge * 100).toFixed(1)}</span>
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 font-mono text-[11px] font-semibold text-slate-600">
+            {rank}
           </span>
-          <span>
-            <span className="block text-slate-500">Ends</span>
-            <span className="font-mono font-semibold">{timeToCloseLabel(opportunity.market.closeTime)}</span>
-          </span>
+          <span className="line-clamp-2 min-w-0 flex-1 font-semibold text-slate-800">{opportunity.market.title}</span>
+        </span>
+        <span className="mt-2 grid grid-cols-3 gap-2 pl-14">
+          <CompactMetric label="Side" value={opportunity.side.toUpperCase()} />
+          <CompactMetric label="Edge" value={(directionalEdge * 100).toFixed(1)} />
+          <CompactMetric label="Ends" value={timeToCloseLabel(opportunity.market.closeTime)} />
         </span>
       </button>
       {expanded ? (
         <div className="border-t border-slate-100 px-3 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="font-mono text-[11px] text-slate-500">{opportunity.id}</div>
+              <DetailLine label="Kalshi ID" value={opportunity.market.ticker} />
+              <DetailLine label="Recommendation ID" value={opportunity.id} />
               <div className="mt-2 text-slate-600">{opportunity.thesis.summary}</div>
             </div>
             <StatusPill tone={approved ? "success" : "warning"}>{approved ? "paper ready" : "blocked"}</StatusPill>
@@ -788,11 +797,29 @@ function searchableOpportunityText(opportunity: Opportunity): string {
   ].filter(Boolean).join(" "));
 }
 
+function DetailLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="mb-2 min-w-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5">
+      <div className="text-[11px] font-medium uppercase text-slate-500">{label}</div>
+      <div className="break-all font-mono text-[11px] font-semibold text-slate-700">{value}</div>
+    </div>
+  );
+}
+
+function CompactMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="min-w-0">
+      <span className="block text-[11px] text-slate-500">{label}</span>
+      <span className="block truncate font-mono text-[11px] font-semibold text-slate-800">{value}</span>
+    </span>
+  );
+}
+
 function Cell({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="text-slate-500">{label}</div>
-      <div className="font-mono font-semibold">{value}</div>
+      <div className="break-words font-mono font-semibold">{value}</div>
     </div>
   );
 }
