@@ -50,7 +50,15 @@ const envSchema = z.object({
   PAPER_DAEMON_ENABLED: z.string().default("false"),
   PAPER_DAEMON_INTERVAL_MS: z.coerce.number().default(300000),
   PAPER_DAEMON_MAX_TICKS: z.coerce.number().default(1),
-  AGENT_POLICY_AUTOPILOT_APPLY: z.string().default("false")
+  AGENT_POLICY_AUTOPILOT_APPLY: z.string().default("false"),
+  BROWSER_RESEARCH_ENABLED: z.string().default("false"),
+  BROWSER_RESEARCH_ENDPOINT: z.string().url().optional(),
+  BROWSER_RESEARCH_API_KEY: z.string().optional(),
+  BROWSER_RESEARCH_TIMEOUT_MS: z.coerce.number().default(12000),
+  THE_ODDS_API_KEY: z.string().optional(),
+  THE_ODDS_API_BASE_URL: z.string().url().default("https://api.the-odds-api.com"),
+  THE_ODDS_API_REGIONS: z.string().default("us"),
+  THE_ODDS_API_MARKETS: z.string().default("h2h,spreads,totals")
 });
 
 export function getEnv() {
@@ -109,6 +117,20 @@ export function getAgentAutomationConfig() {
     agentPolicyAutopilotApply: boolEnv(env.AGENT_POLICY_AUTOPILOT_APPLY),
     operatorAuthConfigured: Boolean(env.OPERATOR_API_TOKEN),
     operatorAuthRequired: env.EVENTFUND_ENV === "production" || Boolean(env.OPERATOR_API_TOKEN)
+  };
+}
+
+export function getBrowserResearchConfig() {
+  const env = getEnv();
+  return {
+    enabled: boolEnv(env.BROWSER_RESEARCH_ENABLED),
+    endpoint: env.BROWSER_RESEARCH_ENDPOINT,
+    apiKey: env.BROWSER_RESEARCH_API_KEY,
+    timeoutMs: Math.max(1500, Math.floor(env.BROWSER_RESEARCH_TIMEOUT_MS)),
+    oddsApiKey: env.THE_ODDS_API_KEY,
+    oddsApiBaseUrl: env.THE_ODDS_API_BASE_URL.replace(/\/$/, ""),
+    oddsRegions: env.THE_ODDS_API_REGIONS,
+    oddsMarkets: env.THE_ODDS_API_MARKETS
   };
 }
 

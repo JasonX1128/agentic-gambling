@@ -21,6 +21,7 @@ This repo was created as a greenfield implementation in an empty workspace.
 - Continuous paper-trading daemon that scans markets, marks positions, enqueues Redis Stream work, runs bounded workers, and audits each tick.
 - Redis Stream workers for research, risk cluster review, paper execution, settlement reconciliation, policy learning, and executive committee review.
 - Agent learning loop that proposes permissioned edits to the file-backed paper-cycle policy from PnL and calibration.
+- Browser Research Agent that can attach public web deep-dive evidence and comparable sportsbook odds before paper or live execution review.
 - Conservative Kalshi settlement reconciliation for open paper positions when market status and terminal prices make the outcome inferable.
 - Event-cluster exposure risk checks across related Kalshi contracts.
 - Production operator-token guard for mutating control routes.
@@ -192,6 +193,19 @@ PAPER_DAEMON_MAX_TICKS=1
 AGENT_POLICY_AUTOPILOT_APPLY=false
 ```
 
+Browser Research Agent defaults:
+
+```env
+BROWSER_RESEARCH_ENABLED=false
+BROWSER_RESEARCH_ENDPOINT=
+BROWSER_RESEARCH_API_KEY=
+THE_ODDS_API_KEY=
+THE_ODDS_API_REGIONS=us
+THE_ODDS_API_MARKETS=h2h,spreads,totals
+```
+
+When enabled, the agent posts trade-condition research tasks to `BROWSER_RESEARCH_ENDPOINT` and uses The Odds API for normalized sportsbook odds. If either path is missing, it records the exact blocker and does not invent evidence.
+
 Run one agent-selected paper cycle:
 
 ```bash
@@ -272,6 +286,7 @@ Agent operating policy:
 - `POST /api/agents/learning/propose`
 - `POST /api/agents/reconciliation/run`
 - `POST /api/agents/executive-review/run`
+- `POST /api/research/browser/:id`
 - `GET /api/agents/governance`
 - `GET /api/agents/policy`
 - `POST /api/agents/policy`

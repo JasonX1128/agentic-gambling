@@ -60,6 +60,17 @@ The Compliance Officer blocks trades involving:
 - Rule ambiguity beyond threshold.
 - Unsupported high-confidence claims.
 
+## Browser Research Agent
+
+The Browser Research Agent is attached to trade execution review. It can use:
+
+- `BROWSER_RESEARCH_ENDPOINT` for public browser-harness deep dives into trade conditions, player/team performance, injuries, public catalysts, rules, and settlement facts.
+- `THE_ODDS_API_KEY` for normalized sportsbook odds comparison across configured regions and market types.
+
+If either capability is missing, the agent records the blocker in the research report and audit log. It does not treat missing browser access as completed research, and it cannot use private, leaked, confidential, or restricted-person information.
+
+Sportsbook odds are used as comparable public pricing, not as truth. The agent explicitly notes vig, imperfect contract mapping, and whether the sportsbook consensus could be mapped to the Kalshi YES side.
+
 ## Risk Controls
 
 Implemented controls include:

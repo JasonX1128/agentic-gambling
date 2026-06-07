@@ -76,7 +76,7 @@ export type OrderBook = {
 export type EvidenceItem = {
   id: string;
   marketId: string;
-  sourceType: "rules" | "market_data" | "public_context" | "agent_inference";
+  sourceType: "rules" | "market_data" | "public_context" | "agent_inference" | "browser_research" | "sportsbook_odds";
   title: string;
   url?: string;
   excerpt: string;
@@ -153,6 +153,33 @@ export type ComplianceDecision = {
   warnings: string[];
 };
 
+export type SportsbookOddsComparison = {
+  sportsbook: string;
+  marketKey: string;
+  outcomeName: string;
+  decimalOdds: number;
+  impliedProbability: number;
+  point?: number;
+  lastUpdate?: string;
+};
+
+export type BrowserResearchReport = {
+  id: string;
+  marketId: string;
+  ticker: string;
+  agentName: "Browser Research Agent";
+  status: "complete" | "partial" | "blocked";
+  summary: string;
+  queries: string[];
+  sources: EvidenceItem[];
+  sportsbookComparisons: SportsbookOddsComparison[];
+  sportsbookConsensusProbability?: number;
+  kalshiMarketProbability: number;
+  fairPricingNote: string;
+  blockers: string[];
+  createdAt: string;
+};
+
 export type Opportunity = {
   id: string;
   market: Market;
@@ -163,6 +190,7 @@ export type Opportunity = {
   debate: AnalystDebateTurn[];
   risk: RiskDecision;
   compliance: ComplianceDecision;
+  browserResearch?: BrowserResearchReport;
   sector: string;
   podId: string;
   status: "candidate" | "blocked" | "approved_for_paper" | "paper_filled" | "live_ready";

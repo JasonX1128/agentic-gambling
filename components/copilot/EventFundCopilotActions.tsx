@@ -41,6 +41,7 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
         hardBlockedBy: opportunity.risk.hardBlockedBy,
         negotiableBlockedBy: opportunity.risk.negotiableBlockedBy,
         complianceApproved: opportunity.compliance.approved,
+        browserResearch: opportunity.browserResearch,
         status: opportunity.status
       })),
       pnl: {
@@ -111,6 +112,18 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
     parameters: z.object({ recommendationId: z.string() }),
     handler: async ({ recommendationId }, { signal }) =>
       apiJson(`/api/recommendations/${encodeURIComponent(recommendationId)}/explain`, undefined, signal)
+  });
+
+  useFrontendTool({
+    name: "runBrowserResearchForTrade",
+    description:
+      "Run the Browser Research Agent for a recommendation. It uses the configured public browser harness and sportsbook odds feed to attach evidence and fair-pricing context before trade approval.",
+    parameters: z.object({ recommendationId: z.string() }),
+    handler: async ({ recommendationId }, { signal }) =>
+      apiJson(`/api/research/browser/${encodeURIComponent(recommendationId)}`, {
+        method: "POST",
+        body: JSON.stringify({})
+      }, signal)
   });
 
   useFrontendTool({

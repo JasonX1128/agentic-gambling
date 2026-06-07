@@ -27,6 +27,8 @@ The Next.js standalone output is controlled by `EVENTFUND_DEPLOY_TARGET=cloud`. 
 - CopilotKit model backend:
   - Free path: run an Ollama service reachable from the app and set `OLLAMA_BASE_URL`.
   - Paid/simple path: set `LLM_PROVIDER=openai` and `OPENAI_API_KEY`.
+- Browser research service reachable through `BROWSER_RESEARCH_ENDPOINT` if `BROWSER_RESEARCH_ENABLED=true`.
+- Sportsbook odds provider key (`THE_ODDS_API_KEY`) if odds comparison is enabled.
 
 The free Ollama path is possible in cloud, but it is not the same as local laptop Ollama. The app container must be able to reach a separate Ollama service URL, for example a private service in the same cloud project. `localhost` will not work unless Ollama runs in the same container, which is not recommended for this app.
 
@@ -82,6 +84,7 @@ I cannot complete the actual cloud deployment from this local workspace without:
 - Kalshi API key and private key in the cloud secret store.
 - W&B API key and project/entity values in the cloud secret store.
 - A reachable cloud model backend for CopilotKit. For the free-model path, that means an Ollama service URL reachable from the app.
+- A reachable browser harness endpoint and sportsbook odds API key if the Browser Research Agent is enabled.
 
 These are credential/account blockers only. The code path for cloud deployment is now present.
 

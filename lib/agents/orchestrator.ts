@@ -53,6 +53,9 @@ export function explainOpportunity(opportunity: Opportunity): string {
     opportunity.risk.counterOffer.accepted
       ? `Risk counteroffer accepted: $${opportunity.risk.counterOffer.positionSize} max notional, entry <= ${opportunity.risk.counterOffer.maxEntryPrice} cents.`
       : `Risk counteroffer pending: ${opportunity.risk.counterOffer.conditions.join(" ")}`,
+    opportunity.browserResearch
+      ? `Browser research: ${opportunity.browserResearch.status}. ${opportunity.browserResearch.fairPricingNote} ${opportunity.browserResearch.blockers.length ? `Blockers: ${opportunity.browserResearch.blockers.join(" ")}` : ""}`.trim()
+      : "Browser research: not yet attached; run the Browser Research Agent before execution review.",
     opportunity.compliance.approved
       ? "Compliance: public evidence and settlement source checks pass; human approval remains required."
       : `Compliance blocked: ${opportunity.compliance.blockedReasons.join(" ")}`

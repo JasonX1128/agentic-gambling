@@ -535,6 +535,37 @@ function OpportunityRow({ opportunity }: { opportunity: Opportunity }) {
         <Cell label="Size" value={`$${opportunity.risk.positionSize}`} />
       </div>
       <div className="mt-2 text-xs text-slate-600">{opportunity.thesis.summary}</div>
+      {opportunity.browserResearch ? (
+        <div className="mt-3 rounded-md border border-slate-200 bg-white p-2 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-semibold text-slate-700">Browser research</span>
+            <StatusPill
+              tone={
+                opportunity.browserResearch.status === "complete"
+                  ? "success"
+                  : opportunity.browserResearch.status === "partial"
+                    ? "info"
+                    : "warning"
+              }
+            >
+              {opportunity.browserResearch.status}
+            </StatusPill>
+          </div>
+          <div className="mt-2 text-slate-600">{opportunity.browserResearch.fairPricingNote}</div>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <Cell label="Sources" value={String(opportunity.browserResearch.sources.length)} />
+            <Cell label="Odds" value={String(opportunity.browserResearch.sportsbookComparisons.length)} />
+            <Cell
+              label="Book prob"
+              value={
+                opportunity.browserResearch.sportsbookConsensusProbability === undefined
+                  ? "n/a"
+                  : `${(opportunity.browserResearch.sportsbookConsensusProbability * 100).toFixed(1)}%`
+              }
+            />
+          </div>
+        </div>
+      ) : null}
       <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-2 text-xs">
         <div className="flex items-center justify-between gap-2">
           <span className="font-semibold text-slate-700">Risk negotiation</span>

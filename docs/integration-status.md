@@ -64,6 +64,7 @@ Implemented:
 - Provider and sidebar.
 - Readable compressed app state.
 - Actions for trade queries, recommendation explanations, risk-limit requests, opportunity filtering, CIO memos, paper trade approval, daemon ticks, Redis worker runs, learning proposals, reconciliation, executive review, and live-gate requests.
+- Action for running Browser Research Agent on a recommendation before approval.
 
 Free local setup:
 
@@ -81,6 +82,24 @@ Optional paid fallback:
 CopilotKit cannot bypass risk, compliance, Redis, or live-trading gates.
 
 Set `COPILOTKIT_TELEMETRY_DISABLED=true` to opt out of CopilotKit anonymous telemetry during local builds/runs.
+
+## Browser Research And Sportsbook Odds
+
+Implemented:
+
+- `Browser Research Agent` role in the sector pod roster.
+- `POST /api/research/browser/:id` to attach public web/odds evidence to an opportunity.
+- Pre-execution research pass in paper and live order paths.
+- Generic `BROWSER_RESEARCH_ENDPOINT` adapter for a browser harness service.
+- The Odds API adapter for sportsbook odds snapshots using `/v4/sports/{sport}/odds`.
+
+Blocked until configured:
+
+- `BROWSER_RESEARCH_ENABLED=true`
+- `BROWSER_RESEARCH_ENDPOINT` for public web deep dives
+- `THE_ODDS_API_KEY` for sportsbook odds comparison
+
+Missing browser/odds credentials do not fake research. The agent records blockers and the trade continues only through the normal Kalshi, risk, compliance, Redis, and live-gate rules.
 
 ## Dependency Audit
 

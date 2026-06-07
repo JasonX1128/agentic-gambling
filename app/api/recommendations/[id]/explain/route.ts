@@ -13,6 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     explanation: explainOpportunity(opportunity),
     thesis: opportunity.thesis,
     debate: opportunity.debate,
+    browserResearch: opportunity.browserResearch,
     risk: opportunity.risk,
     compliance: opportunity.compliance
   });

@@ -56,6 +56,11 @@ if (provider() === "ollama") {
   blockers.push("LLM_PROVIDER=ollama or LLM_PROVIDER=openai");
 }
 
+if (isTruthy(env.BROWSER_RESEARCH_ENABLED)) {
+  requireValue("BROWSER_RESEARCH_ENDPOINT", "BROWSER_RESEARCH_ENDPOINT for Browser Research Agent public-web deep dives");
+  requireValue("THE_ODDS_API_KEY", "THE_ODDS_API_KEY for sportsbook odds comparison");
+}
+
 console.log("EventFund OS cloud preflight");
 console.log(`Trading mode: ${env.TRADING_MODE || "paper"}`);
 console.log(`EventFund env: ${env.EVENTFUND_ENV || "dev"}`);
@@ -65,6 +70,7 @@ console.log(`Redis configured: ${Boolean(env.REDIS_URL)}`);
 console.log(`Operator auth configured: ${Boolean(env.OPERATOR_API_TOKEN)}`);
 console.log(`Kalshi configured: ${Boolean(env.KALSHI_API_KEY && (env.KALSHI_PRIVATE_KEY || env.KALSHI_PRIVATE_KEY_PATH || env.KALSHI_API_SECRET))}`);
 console.log(`Weave configured: ${Boolean(env.WANDB_API_KEY && (env.WEAVE_PROJECT || env.WANDB_PROJECT))}`);
+console.log(`Browser research enabled: ${isTruthy(env.BROWSER_RESEARCH_ENABLED)}`);
 
 if (warnings.length) {
   console.log("\nWarnings:");

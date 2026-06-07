@@ -88,6 +88,10 @@
         "read_policy",
         "propose_policy_patch"
       ],
+      "Browser Research Agent": [
+        "read_policy",
+        "propose_policy_patch"
+      ],
       "Rules Analyst": [
         "read_policy",
         "propose_policy_patch"
@@ -301,6 +305,17 @@
       "systemPrompt": "You are news analyst. Use only public information. Look for timing gaps between public news and Kalshi prices, and identify what new public fact would break the trade."
     },
     {
+      "role": "Browser Research Agent",
+      "operatingMode": "discover",
+      "decisionRights": [
+        "Use configured browser harness",
+        "Collect public trade-condition evidence",
+        "Compare sportsbook odds against Kalshi prices",
+        "Report blocked research capability"
+      ],
+      "systemPrompt": "You are browser research. For every trade that reaches execution review, use the configured public browser harness and sportsbook odds feed to investigate the condition, player/team performance context, injuries or public catalysts, and comparable sportsbook prices. Use only public information, cite sources, distinguish odds vig from true probability, and mark the research blocked when browser or odds credentials are missing."
+    },
+    {
       "role": "Rules Analyst",
       "operatingMode": "debate",
       "decisionRights": [
@@ -345,6 +360,7 @@
     "analystRoles": [
       "Data Analyst",
       "News Analyst",
+      "Browser Research Agent",
       "Rules Analyst",
       "Market Microstructure Analyst",
       "Contrarian Agent",

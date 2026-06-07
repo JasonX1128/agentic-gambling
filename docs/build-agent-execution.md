@@ -19,6 +19,7 @@ The CTO agent split the work across specialist build agents before implementatio
 - Redis Infrastructure Agent added consumer-group reads and acknowledgements for fund worker queues.
 - Agent Orchestration Engineer added worker handlers for paper cycles, reconciliation, policy learning, and executive review.
 - Data/Quant Engineer added event-cluster exposure detection for duplicated Kalshi risk.
+- Research/Odds Agent added the Browser Research Agent, public browser-harness adapter, sportsbook odds comparison, and pre-execution enrichment.
 - QA/Test Agent added risk-cluster and settlement-inference coverage plus smoke checks for daemon/worker surfaces.
 - Documentation Agent updated runbooks for continuous paper trading, learning proposals, reconciliation, and production access control.
 
@@ -37,6 +38,7 @@ The CTO agent split the work across specialist build agents before implementatio
 - Agent Orchestration Engineer: `lib/agents`, sector pods, debates, CIO memo.
 - Redis Infrastructure Agent: `lib/redis`, idempotency, audit, Pub/Sub, Streams.
 - Runtime/Workers Agent: `lib/agents/daemon.ts`, `lib/agents/workers.ts`, `scripts/paper-daemon.mjs`.
+- Research/Odds Agent: `lib/research/browser-agent.ts`, `app/api/research/browser/[id]`.
 - Weave Observability Agent: `lib/observability`.
 - CopilotKit Agent: `app/api/copilotkit`, `components/copilot`.
 - Frontend/UX: `components/CommandCenter.tsx`.

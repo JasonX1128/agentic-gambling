@@ -18,6 +18,7 @@ const requiredFiles = [
   "app/api/agents/paper-cycle/route.ts",
   "app/api/agents/daemon/tick/route.ts",
   "app/api/agents/workers/run-once/route.ts",
+  "app/api/research/browser/[id]/route.ts",
   "app/api/agents/learning/propose/route.ts",
   "app/api/agents/reconciliation/run/route.ts",
   "app/api/agents/executive-review/run/route.ts",
@@ -30,6 +31,7 @@ const requiredFiles = [
   "components/copilot/EventFundCopilotActions.tsx",
   "lib/risk/engine.ts",
   "lib/risk/event-cluster.ts",
+  "lib/research/browser-agent.ts",
   "lib/security/operator-auth.ts",
   "lib/compliance/engine.ts",
   "lib/execution/engine.ts",
@@ -57,6 +59,7 @@ const portfolio = fs.readFileSync("lib/portfolio/engine.ts", "utf8");
 const daemon = fs.readFileSync("lib/agents/daemon.ts", "utf8");
 const workers = fs.readFileSync("lib/agents/workers.ts", "utf8");
 const learning = fs.readFileSync("lib/agents/learning.ts", "utf8");
+const browserResearch = fs.readFileSync("lib/research/browser-agent.ts", "utf8");
 const risk = fs.readFileSync("lib/risk/engine.ts", "utf8");
 const operatorAuth = fs.readFileSync("lib/security/operator-auth.ts", "utf8");
 const operatingPolicy = fs.readFileSync("lib/agents/operating-policy.ts", "utf8");
@@ -79,6 +82,7 @@ const checks = [
       copilotRoute.includes("default")
   ],
   ["CopilotKit action surface includes paper approval", copilotActions.includes("approvePaperTrade")],
+  ["CopilotKit action surface includes browser research", copilotActions.includes("runBrowserResearchForTrade")],
   ["CopilotKit action surface includes agent paper cycle", copilotActions.includes("runAgentPaperCycle")],
   ["CopilotKit action surface includes daemon and workers", copilotActions.includes("runContinuousPaperDaemonTick") && copilotActions.includes("runRedisFundWorkersOnce")],
   ["CopilotKit action surface includes paper close", copilotActions.includes("closePaperPosition")],
@@ -89,6 +93,7 @@ const checks = [
   ["continuous paper daemon enqueues worker tasks", daemon.includes("runPaperTradingDaemonTick") && daemon.includes("enqueueDaemonTasks")],
   ["Redis Stream workers consume fund queues", workers.includes("readTaskBatch") && workers.includes("ackTask") && workers.includes("runPaperCycle")],
   ["agent learning proposes policy changes", learning.includes("buildPaperCycleLearningProposal") && learning.includes("agentPolicyAutopilotApply")],
+  ["browser research agent can attach odds evidence", browserResearch.includes("Browser Research Agent") && browserResearch.includes("oddsApiKey") && browserResearch.includes("attachBrowserResearchToOpportunity")],
   ["risk engine checks event-cluster exposure", risk.includes("MAX_CORRELATED_EXPOSURE") && risk.includes("eventClusterExposure")],
   ["production mutating APIs require operator auth", operatorAuth.includes("OPERATOR_API_TOKEN") && operatorAuth.includes("Authorization: Bearer")],
   ["agent operating policy file protects live gates", policyConfig.includes("GLOBAL_KILL_SWITCH") && policyConfig.includes("liveTradingEditPolicy")],

@@ -7,6 +7,7 @@ import { evaluateRisk } from "@/lib/risk/engine";
 import { evaluateCompliance } from "@/lib/compliance/engine";
 import { traceAsync } from "@/lib/observability/weave";
 import { calibrationBucket } from "@/lib/quant/scoring";
+import { researchOpportunityWithBrowserAgent } from "@/lib/research/browser-agent";
 
 export type PaperTradeResult = {
   order: TradeOrder;
@@ -23,23 +24,24 @@ export async function approvePaperTrade(
     await requireRedisForTrading();
     const auditId = `audit-${Date.now()}`;
     const portfolio = await getPortfolioSnapshot();
-    const draftOrder = buildTradeOrder(opportunity, "paper", source, auditId);
+    const researchedOpportunity = await researchOpportunityWithBrowserAgent(opportunity);
+    const draftOrder = buildTradeOrder(researchedOpportunity, "paper", source, auditId);
     const risk = evaluateRisk(
       {
-        market: opportunity.market,
-        forecast: opportunity.forecast,
+        market: researchedOpportunity.market,
+        forecast: researchedOpportunity.forecast,
         requestedNotional: orderNotional(draftOrder),
         portfolio
       },
       getRiskLimits()
     );
     const compliance = evaluateCompliance({
-      market: opportunity.market,
-      thesis: opportunity.thesis,
-      forecast: opportunity.forecast
+      market: researchedOpportunity.market,
+      thesis: researchedOpportunity.thesis,
+      forecast: researchedOpportunity.forecast
     });
     const order = risk.approved
-      ? buildTradeOrder({ ...opportunity, risk }, "paper", source, auditId)
+      ? buildTradeOrder({ ...researchedOpportunity, risk, compliance }, "paper", source, auditId)
       : draftOrder;
     if (!risk.approved || !compliance.approved) {
       const blocked: TradeOrder = {
@@ -51,7 +53,7 @@ export async function approvePaperTrade(
       return { order: blocked, portfolio: undefined, blocked: true, replayed: false };
     }
     const result = await withIdempotency(`paper:${opportunity.id}:${source}:${new Date().toISOString().slice(0, 10)}`, async () => {
-      const portfolio = await applyPaperFill(order, markPriceForSide(opportunity));
+      const portfolio = await applyPaperFill(order, markPriceForSide(researchedOpportunity));
       await appendAuditEvent(
         auditEvent(
           "paper_order",
@@ -90,21 +92,22 @@ export async function executeLiveTrade(opportunity: Opportunity, approvalToken?:
       return { blocked: true, code: "LIVE_MODE_NOT_ACTIVE", reasons: ["Server trading mode is not live."] };
     }
     await requireRedisForTrading();
+    const researchedOpportunity = await researchOpportunityWithBrowserAgent(opportunity);
     const portfolio = await getPortfolioSnapshot();
-    const draftOrder = buildTradeOrder(opportunity, "live", "operator", `audit-${Date.now()}`);
+    const draftOrder = buildTradeOrder(researchedOpportunity, "live", "operator", `audit-${Date.now()}`);
     const risk = evaluateRisk(
       {
-        market: opportunity.market,
-        forecast: opportunity.forecast,
+        market: researchedOpportunity.market,
+        forecast: researchedOpportunity.forecast,
         requestedNotional: orderNotional(draftOrder),
         portfolio
       },
       getRiskLimits()
     );
     const compliance = evaluateCompliance({
-      market: opportunity.market,
-      thesis: opportunity.thesis,
-      forecast: opportunity.forecast
+      market: researchedOpportunity.market,
+      thesis: researchedOpportunity.thesis,
+      forecast: researchedOpportunity.forecast
     });
     if (!risk.approved || !compliance.approved) {
       return {
@@ -114,7 +117,7 @@ export async function executeLiveTrade(opportunity: Opportunity, approvalToken?:
       };
     }
     const client = new KalshiClient();
-    const order = buildTradeOrder({ ...opportunity, risk }, "live", "operator", draftOrder.auditId);
+    const order = buildTradeOrder({ ...researchedOpportunity, risk, compliance }, "live", "operator", draftOrder.auditId);
     const response = await withIdempotency(`live:${opportunity.id}:${approvalToken}`, () =>
       client.createOrder({
         ticker: order.ticker,

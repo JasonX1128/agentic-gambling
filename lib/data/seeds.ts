@@ -119,6 +119,7 @@ export function buildSectorPods(markets: Market[] = demoMarkets, opportunities?:
       "Sector Risk Agent",
       "Data Analyst",
       "News Analyst",
+      "Browser Research Agent",
       "Rules Analyst",
       "Market Microstructure Analyst",
       "Contrarian Agent",
