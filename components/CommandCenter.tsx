@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
   BarChart3,
   BookOpenCheck,
+  ChevronDown,
+  ChevronRight,
   CircuitBoard,
   ClipboardCheck,
   Gauge,
   Landmark,
+  Search,
   ShieldAlert,
   SquareActivity,
   StopCircle,
@@ -21,6 +24,7 @@ import type {
   DemoRun,
   ExecutiveReview,
   IntegrationStatus,
+  Market,
   Opportunity,
   PodProposal,
   PortfolioSnapshot,
@@ -34,6 +38,10 @@ import { Providers } from "@/app/providers";
 export function CommandCenter({ initialData }: { initialData: DemoRun }) {
   const [data, setData] = useState(initialData);
   const [lastRefresh, setLastRefresh] = useState(initialData.portfolio.updatedAt);
+  const [marketFilter, setMarketFilter] = useState("");
+  const [opportunityFilter, setOpportunityFilter] = useState("");
+  const [expandedMarketId, setExpandedMarketId] = useState<string>();
+  const [expandedOpportunityId, setExpandedOpportunityId] = useState<string>();
 
   useEffect(() => {
     let active = true;
@@ -63,6 +71,17 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
   const approved = data.opportunities.filter((opportunity) => opportunity.risk.approved && opportunity.compliance.approved);
   const activePods = data.pods.filter((pod) => pod.lifecycleStatus === "active" || pod.lifecycleStatus === "pip" || pod.lifecycleStatus === "defense");
   const stressedPods = data.pods.filter((pod) => pod.lifecycleStatus === "pip" || pod.lifecycleStatus === "defense");
+  const filteredMarkets = useMemo(() => {
+    const query = normalizeFilter(marketFilter);
+    if (!query) return data.markets;
+    return data.markets.filter((market) => searchableMarketText(market).includes(query));
+  }, [data.markets, marketFilter]);
+  const rankedOpportunities = useMemo(() => [...data.opportunities].sort((a, b) => b.rankScore - a.rankScore), [data.opportunities]);
+  const filteredOpportunities = useMemo(() => {
+    const query = normalizeFilter(opportunityFilter);
+    if (!query) return rankedOpportunities;
+    return rankedOpportunities.filter((opportunity) => searchableOpportunityText(opportunity).includes(query));
+  }, [opportunityFilter, rankedOpportunities]);
   const navItems: Array<[string, LucideIcon, string]> = [
     ["Command", SquareActivity, "command-top"],
     ["Markets", BarChart3, "markets-panel"],
@@ -137,54 +156,51 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
                   {data.marketBlocker}
                 </div>
               ) : null}
-              <div className="overflow-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b border-line text-slate-500">
-                    <tr>
-                      <th className="py-2 pr-2">Market</th>
-                      <th className="py-2 pr-2">Sector</th>
-                      <th className="py-2 pr-2">Yes</th>
-                      <th className="py-2 pr-2">Spread</th>
-                      <th className="py-2 pr-2">Liq</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.markets.length ? data.markets.map((market) => (
-                      <tr key={market.id} className="border-b border-slate-100 align-top">
-                        <td className="max-w-[300px] py-2 pr-2">
-                          <div className="font-medium">{market.title}</div>
-                          <div className="font-mono text-[11px] text-slate-500">{market.ticker}</div>
-                        </td>
-                        <td className="py-2 pr-2">{market.sector}</td>
-                        <td className="py-2 pr-2 font-mono">
-                          {market.yesBid}/{market.yesAsk}
-                        </td>
-                        <td className="py-2 pr-2 font-mono">{Math.max(0, market.yesAsk - market.yesBid)}</td>
-                        <td className="py-2 pr-2 font-mono">{market.liquidity}</td>
-                      </tr>
-                    )) : (
-                      <tr>
-                        <td className="py-4 pr-2 text-slate-500" colSpan={5}>
-                          No real Kalshi markets loaded.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+              <FilterInput
+                label="Filter markets"
+                value={marketFilter}
+                onChange={setMarketFilter}
+                resultCount={filteredMarkets.length}
+                totalCount={data.markets.length}
+              />
+              <div className="mt-3 max-h-[560px] space-y-2 overflow-y-auto pr-1">
+                {filteredMarkets.length ? filteredMarkets.map((market) => (
+                  <MarketCard
+                    key={market.id}
+                    expanded={expandedMarketId === market.id}
+                    market={market}
+                    onToggle={() => setExpandedMarketId((current) => current === market.id ? undefined : market.id)}
+                  />
+                )) : (
+                  <div className="rounded-md border border-dashed border-line p-3 text-xs text-slate-500">
+                    No markets match the current filter.
+                  </div>
+                )}
               </div>
             </Panel>
 
-            <Panel title="Opportunity Ranking" icon={<BookOpenCheck className="h-4 w-4" />}>
-              <div className="space-y-3">
-                {data.opportunities.length ? [...data.opportunities]
-                  .sort((a, b) => b.rankScore - a.rankScore)
-                  .map((opportunity) => (
-                    <OpportunityRow key={opportunity.id} opportunity={opportunity} />
-                  )) : (
+            <Panel title="Opportunity Ranking" icon={<BookOpenCheck className="h-4 w-4" />} id="opportunities-panel">
+              <FilterInput
+                label="Filter opportunities"
+                value={opportunityFilter}
+                onChange={setOpportunityFilter}
+                resultCount={filteredOpportunities.length}
+                totalCount={data.opportunities.length}
+              />
+              <div className="mt-3 max-h-[560px] space-y-2 overflow-y-auto pr-1">
+                {filteredOpportunities.length ? filteredOpportunities.map((opportunity, index) => (
+                  <OpportunityCard
+                    key={opportunity.id}
+                    expanded={expandedOpportunityId === opportunity.id}
+                    opportunity={opportunity}
+                    rank={index + 1}
+                    onToggle={() => setExpandedOpportunityId((current) => current === opportunity.id ? undefined : opportunity.id)}
+                  />
+                )) : (
                     <div className="rounded-md border border-dashed border-line p-3 text-xs text-slate-500">
-                      No paper-trade candidates until real Kalshi market data loads and passes risk/compliance.
+                      {data.opportunities.length ? "No opportunities match the current filter." : "No paper-trade candidates until real Kalshi market data loads and passes risk/compliance."}
                     </div>
-                  )}
+                )}
               </div>
             </Panel>
 
@@ -403,6 +419,213 @@ function GovernancePanel({
   );
 }
 
+function FilterInput({
+  label,
+  value,
+  onChange,
+  resultCount,
+  totalCount
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  resultCount: number;
+  totalCount: number;
+}) {
+  return (
+    <label className="flex items-center gap-2 rounded-md border border-line bg-slate-50 px-3 py-2 text-xs">
+      <Search className="h-4 w-4 text-slate-400" />
+      <input
+        className="min-w-0 flex-1 bg-transparent text-slate-800 outline-none placeholder:text-slate-400"
+        placeholder={label}
+        type="search"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      <span className="whitespace-nowrap font-mono text-[11px] text-slate-500">
+        {resultCount}/{totalCount}
+      </span>
+    </label>
+  );
+}
+
+function MarketCard({ market, expanded, onToggle }: { market: Market; expanded: boolean; onToggle: () => void }) {
+  const spread = Math.max(0, market.yesAsk - market.yesBid);
+  return (
+    <div className="rounded-md border border-line bg-white text-xs shadow-sm">
+      <button
+        aria-expanded={expanded}
+        className="flex w-full items-start gap-3 px-3 py-2 text-left hover:bg-slate-50"
+        onClick={onToggle}
+        type="button"
+      >
+        <span className="mt-0.5 text-slate-400">
+          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="line-clamp-2 font-semibold text-slate-800">{market.title}</span>
+          <span className="mt-1 block truncate font-mono text-[11px] text-slate-500">{market.ticker}</span>
+        </span>
+        <span className="grid w-[150px] shrink-0 grid-cols-2 gap-2 text-right">
+          <span>
+            <span className="block text-slate-500">Yes</span>
+            <span className="font-mono font-semibold">{market.yesBid}/{market.yesAsk}</span>
+          </span>
+          <span>
+            <span className="block text-slate-500">Liq</span>
+            <span className="font-mono font-semibold">{compactNumber(market.liquidity)}</span>
+          </span>
+        </span>
+      </button>
+      {expanded ? (
+        <div className="border-t border-slate-100 px-3 py-3">
+          <div className="grid grid-cols-3 gap-2">
+            <Cell label="Sector" value={market.sector} />
+            <Cell label="Status" value={market.status} />
+            <Cell label="Ends" value={timeToCloseLabel(market.closeTime)} />
+            <Cell label="Spread" value={`${spread}c`} />
+            <Cell label="Volume" value={compactNumber(market.volume)} />
+            <Cell label="Open int" value={compactNumber(market.openInterest)} />
+          </div>
+          <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-2 text-slate-600">
+            <div className="font-semibold text-slate-700">Rules</div>
+            <div className="mt-1">{market.ruleSummary || "Rules summary unavailable."}</div>
+          </div>
+          <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 p-2 text-slate-600">
+            <div className="font-semibold text-slate-700">Settlement</div>
+            <div className="mt-1">{market.settlementSource || "Settlement source unavailable."}</div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function OpportunityCard({
+  opportunity,
+  expanded,
+  rank,
+  onToggle
+}: {
+  opportunity: Opportunity;
+  expanded: boolean;
+  rank: number;
+  onToggle: () => void;
+}) {
+  const approved = opportunity.risk.approved && opportunity.compliance.approved;
+  const directionalEdge = Math.abs(opportunity.forecast.expectedValue);
+  return (
+    <div className="rounded-md border border-line bg-white text-xs shadow-sm">
+      <button
+        aria-expanded={expanded}
+        className="flex w-full items-start gap-3 px-3 py-2 text-left hover:bg-slate-50"
+        onClick={onToggle}
+        type="button"
+      >
+        <span className="mt-0.5 text-slate-400">
+          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </span>
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 font-mono text-[11px] font-semibold text-slate-600">
+          {rank}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="line-clamp-2 font-semibold text-slate-800">{opportunity.market.title}</span>
+          <span className="mt-1 block truncate font-mono text-[11px] text-slate-500">{opportunity.market.ticker}</span>
+        </span>
+        <span className="grid w-[170px] shrink-0 grid-cols-3 gap-2 text-right">
+          <span>
+            <span className="block text-slate-500">Side</span>
+            <span className="font-mono font-semibold">{opportunity.side.toUpperCase()}</span>
+          </span>
+          <span>
+            <span className="block text-slate-500">Edge</span>
+            <span className="font-mono font-semibold">{(directionalEdge * 100).toFixed(1)}</span>
+          </span>
+          <span>
+            <span className="block text-slate-500">Ends</span>
+            <span className="font-mono font-semibold">{timeToCloseLabel(opportunity.market.closeTime)}</span>
+          </span>
+        </span>
+      </button>
+      {expanded ? (
+        <div className="border-t border-slate-100 px-3 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-mono text-[11px] text-slate-500">{opportunity.id}</div>
+              <div className="mt-2 text-slate-600">{opportunity.thesis.summary}</div>
+            </div>
+            <StatusPill tone={approved ? "success" : "warning"}>{approved ? "paper ready" : "blocked"}</StatusPill>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-xs sm:grid-cols-6">
+            <Cell label="Conf" value={`${(opportunity.forecast.confidence * 100).toFixed(0)}%`} />
+            <Cell label="Mkt prob" value={`${(opportunity.forecast.marketProbability * 100).toFixed(1)}%`} />
+            <Cell label="Fair" value={`${(opportunity.forecast.fairProbability * 100).toFixed(1)}%`} />
+            <Cell label="Risk" value={String(opportunity.risk.riskScore)} />
+            <Cell label="Size" value={`$${opportunity.risk.positionSize}`} />
+            <Cell label="Rank" value={opportunity.rankScore.toFixed(1)} />
+          </div>
+          {opportunity.browserResearch ? (
+            <div className="mt-3 rounded-md border border-slate-200 bg-white p-2 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-slate-700">Browser research</span>
+                <StatusPill
+                  tone={
+                    opportunity.browserResearch.status === "complete"
+                      ? "success"
+                      : opportunity.browserResearch.status === "partial"
+                        ? "info"
+                        : "warning"
+                  }
+                >
+                  {opportunity.browserResearch.status}
+                </StatusPill>
+              </div>
+              <div className="mt-2 text-slate-600">{opportunity.browserResearch.fairPricingNote}</div>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                <Cell label="Sources" value={String(opportunity.browserResearch.sources.length)} />
+                <Cell label="Odds" value={String(opportunity.browserResearch.sportsbookComparisons.length)} />
+                <Cell
+                  label="Book prob"
+                  value={
+                    opportunity.browserResearch.sportsbookConsensusProbability === undefined
+                      ? "n/a"
+                      : `${(opportunity.browserResearch.sportsbookConsensusProbability * 100).toFixed(1)}%`
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
+          <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-2 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold text-slate-700">Risk negotiation</span>
+              <StatusPill tone={opportunity.risk.counterOffer.accepted ? "success" : opportunity.risk.hardBlockedBy.length ? "danger" : "warning"}>
+                {opportunity.risk.counterOffer.accepted ? "accepted" : opportunity.risk.hardBlockedBy.length ? "hard stop" : "countered"}
+              </StatusPill>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <Cell label="Risk size" value={`$${opportunity.risk.counterOffer.positionSize}`} />
+              <Cell label="Max entry" value={`${opportunity.risk.counterOffer.maxEntryPrice}c`} />
+              <Cell label="Max spread" value={`${opportunity.risk.counterOffer.maxSpreadBps}bps`} />
+            </div>
+            {opportunity.risk.counterOffer.conditions.length ? (
+              <div className="mt-2 text-slate-600">{opportunity.risk.counterOffer.conditions[0]}</div>
+            ) : null}
+            {opportunity.risk.negotiation.length ? (
+              <div className="mt-2 space-y-1">
+                {opportunity.risk.negotiation.slice(-2).map((turn, index) => (
+                  <div key={`${opportunity.id}-risk-turn-${index}`} className="border-t border-slate-200 pt-1 text-slate-600">
+                    <span className="font-medium text-slate-700">{turn.agent}:</span> {turn.message}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function PortfolioPanel({ portfolio }: { portfolio: PortfolioSnapshot }) {
   return (
     <div className="space-y-3 text-xs">
@@ -516,87 +739,6 @@ function Panel({ title, icon, children, id }: { title: string; icon: React.React
   );
 }
 
-function OpportunityRow({ opportunity }: { opportunity: Opportunity }) {
-  const approved = opportunity.risk.approved && opportunity.compliance.approved;
-  const directionalEdge = Math.abs(opportunity.forecast.expectedValue);
-  return (
-    <div className="rounded-md border border-line bg-white p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold">{opportunity.market.title}</div>
-          <div className="mt-1 font-mono text-xs text-slate-500">{opportunity.id}</div>
-        </div>
-        <StatusPill tone={approved ? "success" : "warning"}>{approved ? "paper ready" : "blocked"}</StatusPill>
-      </div>
-      <div className="mt-3 grid grid-cols-3 gap-2 text-xs sm:grid-cols-6">
-        <Cell label="Side" value={opportunity.side.toUpperCase()} />
-        <Cell label="Edge" value={`${(directionalEdge * 100).toFixed(1)}pt`} />
-        <Cell label="Conf" value={`${(opportunity.forecast.confidence * 100).toFixed(0)}%`} />
-        <Cell label="Risk" value={String(opportunity.risk.riskScore)} />
-        <Cell label="Size" value={`$${opportunity.risk.positionSize}`} />
-        <Cell label="Ends" value={timeToCloseLabel(opportunity.market.closeTime)} />
-      </div>
-      <div className="mt-2 text-xs text-slate-600">{opportunity.thesis.summary}</div>
-      {opportunity.browserResearch ? (
-        <div className="mt-3 rounded-md border border-slate-200 bg-white p-2 text-xs">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-semibold text-slate-700">Browser research</span>
-            <StatusPill
-              tone={
-                opportunity.browserResearch.status === "complete"
-                  ? "success"
-                  : opportunity.browserResearch.status === "partial"
-                    ? "info"
-                    : "warning"
-              }
-            >
-              {opportunity.browserResearch.status}
-            </StatusPill>
-          </div>
-          <div className="mt-2 text-slate-600">{opportunity.browserResearch.fairPricingNote}</div>
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            <Cell label="Sources" value={String(opportunity.browserResearch.sources.length)} />
-            <Cell label="Odds" value={String(opportunity.browserResearch.sportsbookComparisons.length)} />
-            <Cell
-              label="Book prob"
-              value={
-                opportunity.browserResearch.sportsbookConsensusProbability === undefined
-                  ? "n/a"
-                  : `${(opportunity.browserResearch.sportsbookConsensusProbability * 100).toFixed(1)}%`
-              }
-            />
-          </div>
-        </div>
-      ) : null}
-      <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-2 text-xs">
-        <div className="flex items-center justify-between gap-2">
-          <span className="font-semibold text-slate-700">Risk negotiation</span>
-          <StatusPill tone={opportunity.risk.counterOffer.accepted ? "success" : opportunity.risk.hardBlockedBy.length ? "danger" : "warning"}>
-            {opportunity.risk.counterOffer.accepted ? "accepted" : opportunity.risk.hardBlockedBy.length ? "hard stop" : "countered"}
-          </StatusPill>
-        </div>
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          <Cell label="Risk size" value={`$${opportunity.risk.counterOffer.positionSize}`} />
-          <Cell label="Max entry" value={`${opportunity.risk.counterOffer.maxEntryPrice}c`} />
-          <Cell label="Max spread" value={`${opportunity.risk.counterOffer.maxSpreadBps}bps`} />
-        </div>
-        {opportunity.risk.counterOffer.conditions.length ? (
-          <div className="mt-2 text-slate-600">{opportunity.risk.counterOffer.conditions[0]}</div>
-        ) : null}
-        {opportunity.risk.negotiation.length ? (
-          <div className="mt-2 space-y-1">
-            {opportunity.risk.negotiation.slice(-2).map((turn, index) => (
-              <div key={`${opportunity.id}-risk-turn-${index}`} className="border-t border-slate-200 pt-1 text-slate-600">
-                <span className="font-medium text-slate-700">{turn.agent}:</span> {turn.message}
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 function timeToCloseLabel(closeTime?: string): string {
   if (!closeTime) return "n/a";
   const ms = Date.parse(closeTime) - Date.now();
@@ -607,6 +749,43 @@ function timeToCloseLabel(closeTime?: string): string {
   const hours = Math.round(minutes / 60);
   if (hours < 48) return `${hours}h`;
   return `${Math.round(hours / 24)}d`;
+}
+
+function compactNumber(value: number): string {
+  return Intl.NumberFormat("en", { maximumFractionDigits: 1, notation: "compact" }).format(value);
+}
+
+function normalizeFilter(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function searchableMarketText(market: Market): string {
+  return normalizeFilter([
+    market.title,
+    market.ticker,
+    market.eventTicker,
+    market.category,
+    market.sector,
+    market.status,
+    market.ruleSummary,
+    market.settlementSource
+  ].filter(Boolean).join(" "));
+}
+
+function searchableOpportunityText(opportunity: Opportunity): string {
+  return normalizeFilter([
+    opportunity.id,
+    opportunity.side,
+    opportunity.market.title,
+    opportunity.market.ticker,
+    opportunity.market.sector,
+    opportunity.thesis.summary,
+    opportunity.thesis.bullCase.join(" "),
+    opportunity.thesis.bearCase.join(" "),
+    opportunity.risk.approved ? "risk approved" : "risk blocked",
+    opportunity.compliance.approved ? "compliance approved" : "compliance blocked",
+    opportunity.browserResearch?.status
+  ].filter(Boolean).join(" "));
 }
 
 function Cell({ label, value }: { label: string; value: string }) {
