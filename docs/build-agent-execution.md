@@ -21,6 +21,8 @@ The CTO agent split the work across specialist build agents before implementatio
 - Data/Quant Engineer added event-cluster exposure detection for duplicated Kalshi risk and short-horizon urgency scoring for faster paper feedback.
 - Runtime/Workers Agent increased default paper-cycle slate size, daemon cadence, worker batch throughput, sector-pod incubation velocity, cross-pod collaboration cadence, and performance-adjusted pod capital allocation.
 - Research/Odds Agent added the Browser Research Agent, public browser-harness adapter, sportsbook odds comparison, and pre-execution enrichment.
+- Fund Governance Agent added Redis-backed pod memory, pod/analyst attribution, cross-pod conflict arbitration, and budget committee history.
+- Execution Controls Agent added post-fill trade watch tasks and dry-run live order previews with operator audit logging.
 - QA/Test Agent added risk-cluster and settlement-inference coverage plus smoke checks for daemon/worker surfaces.
 - Documentation Agent updated runbooks for continuous paper trading, learning proposals, reconciliation, and production access control.
 
@@ -37,6 +39,7 @@ The CTO agent split the work across specialist build agents before implementatio
 - Backend Engineer: `lib/kalshi`, `lib/execution`, API routes.
 - Data/Quant Engineer: `lib/quant`, forecast and sizing calculations.
 - Agent Orchestration Engineer: `lib/agents`, sector pods, debates, CIO memo.
+- Fund Governance Agent: `lib/agents/fund-management.ts`, pod memory, attribution, conflict escalation, committee records.
 - Redis Infrastructure Agent: `lib/redis`, idempotency, audit, Pub/Sub, Streams.
 - Runtime/Workers Agent: `lib/agents/daemon.ts`, `lib/agents/workers.ts`, `scripts/paper-daemon.mjs`.
 - Research/Odds Agent: `lib/research/browser-agent.ts`, `app/api/research/browser/[id]`.

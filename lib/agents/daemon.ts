@@ -132,6 +132,12 @@ async function enqueueDaemonTasks(tickId: string, markets: Market[], positions: 
     tickId,
     createdAt
   });
+  await enqueueTask("fund-memory", {
+    kind: "fund_memory_snapshot",
+    tickId,
+    markets: String(markets.length),
+    createdAt
+  });
   await enqueueTask("executive-review", {
     kind: "executive_review",
     tickId,

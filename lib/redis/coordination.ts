@@ -1,6 +1,13 @@
 import "server-only";
 
-import type { ActivityEvent, Opportunity, PortfolioSnapshot } from "@/lib/domain";
+import type {
+  ActivityEvent,
+  BudgetCommitteeRecord,
+  Opportunity,
+  PodMemoryRecord,
+  PortfolioSnapshot,
+  TradeWatchTask
+} from "@/lib/domain";
 import { getRedisClient } from "@/lib/redis/client";
 import { redisKeys } from "@/lib/redis/keys";
 
@@ -136,6 +143,69 @@ export async function saveOpportunity(opportunity: Opportunity) {
     score: opportunity.rankScore,
     value: opportunity.id
   });
+}
+
+export async function savePodMemoryRecord(record: PodMemoryRecord) {
+  const client = await requireRedisForTrading();
+  await client.hSet(redisKeys.memory(record.id), {
+    payload: JSON.stringify(record),
+    podId: record.podId,
+    sector: record.sector,
+    type: record.type,
+    summary: record.summary,
+    score: String(record.score),
+    createdAt: record.createdAt
+  });
+  await client.zAdd(redisKeys.memoryIndex(), { score: Date.parse(record.createdAt), value: record.id });
+  await client.zAdd(redisKeys.podMemoryIndex(record.sector), { score: record.score, value: record.id });
+}
+
+export async function loadPodMemoryRecords(limit = 40, sector?: string): Promise<PodMemoryRecord[]> {
+  const client = await getRedisClient();
+  const key = sector ? redisKeys.podMemoryIndex(sector) : redisKeys.memoryIndex();
+  const ids = await client.zRange(key, 0, limit - 1, { REV: true });
+  const rows = await Promise.all(ids.map((id) => client.hGet(redisKeys.memory(id), "payload")));
+  return rows.filter(Boolean).map((row) => JSON.parse(row as string) as PodMemoryRecord);
+}
+
+export async function saveTradeWatchTask(task: TradeWatchTask) {
+  const client = await requireRedisForTrading();
+  await client.hSet(redisKeys.tradeWatchTask(task.id), {
+    payload: JSON.stringify(task),
+    orderId: task.orderId,
+    ticker: task.ticker,
+    sector: task.sector,
+    status: task.status,
+    dueAt: task.dueAt,
+    createdAt: task.createdAt
+  });
+  await client.zAdd(redisKeys.tradeWatchIndex(), { score: Date.parse(task.createdAt), value: task.id });
+}
+
+export async function loadTradeWatchTasks(limit = 40): Promise<TradeWatchTask[]> {
+  const client = await getRedisClient();
+  const ids = await client.zRange(redisKeys.tradeWatchIndex(), 0, limit - 1, { REV: true });
+  const rows = await Promise.all(ids.map((id) => client.hGet(redisKeys.tradeWatchTask(id), "payload")));
+  return rows.filter(Boolean).map((row) => JSON.parse(row as string) as TradeWatchTask);
+}
+
+export async function appendBudgetCommitteeRecord(record: BudgetCommitteeRecord) {
+  const client = await requireRedisForTrading();
+  await client.lPush(redisKeys.budgetHistory(), JSON.stringify(record));
+  await client.lTrim(redisKeys.budgetHistory(), 0, 199);
+}
+
+export async function loadBudgetCommitteeHistory(limit = 30): Promise<BudgetCommitteeRecord[]> {
+  const client = await getRedisClient();
+  const rows = await client.lRange(redisKeys.budgetHistory(), 0, limit - 1);
+  return rows.map((row) => JSON.parse(row) as BudgetCommitteeRecord);
+}
+
+export async function appendOperatorAuditLog(entry: Record<string, unknown>) {
+  const client = await requireRedisForTrading();
+  await client.lPush(redisKeys.operatorAudit(), JSON.stringify({ ...entry, createdAt: new Date().toISOString() }));
+  await client.lTrim(redisKeys.operatorAudit(), 0, 199);
+  await publishEvent("alerts", { type: "operator.audit", entry });
 }
 
 function normalizeStreamMessage(message: Record<string, string | Buffer>): Record<string, string> {

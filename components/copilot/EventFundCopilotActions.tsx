@@ -89,6 +89,11 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
       podProposals: data.podProposals,
       executiveReviews: data.executiveReviews,
       crossPodBriefings: data.crossPodBriefings,
+      crossPodConflicts: data.crossPodConflicts,
+      podAttributions: data.podAttributions,
+      podMemory: data.podMemory,
+      tradeWatchTasks: data.tradeWatchTasks,
+      budgetHistory: data.budgetHistory,
       policySummary: data.policySummary
     } as unknown as JsonSerializable;
 
@@ -378,6 +383,18 @@ export function EventFundCopilotActions({ data }: { data: DemoRun }) {
       apiJson("/api/risk/live-trading-gate", {
         method: "POST",
         body: JSON.stringify(args)
+      }, signal)
+  });
+
+  useFrontendTool({
+    name: "previewLiveOrderDryRun",
+    description:
+      "Create an audited dry-run live order preview. This never sends an order to Kalshi and reports missing gates, risk, compliance, and approval requirements.",
+    parameters: z.object({ opportunityId: z.string() }),
+    handler: async ({ opportunityId }, { signal }) =>
+      apiJson(`/api/trades/${encodeURIComponent(opportunityId)}/live-preview`, {
+        method: "POST",
+        body: JSON.stringify({})
       }, signal)
   });
 

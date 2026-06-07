@@ -1,7 +1,23 @@
-import type { ActivityEvent, Opportunity, PortfolioSnapshot, SettlementOutcome, TradeOrder, TradingMode } from "@/lib/domain";
+import type {
+  ActivityEvent,
+  LiveOrderPreview,
+  Opportunity,
+  PortfolioSnapshot,
+  SettlementOutcome,
+  TradeOrder,
+  TradeWatchTask,
+  TradingMode
+} from "@/lib/domain";
 import { getEnv, getRiskLimits, livePrerequisites, boolEnv } from "@/lib/config/env";
 import { applyPaperClose, applyPaperFill, applyPaperSettlement, getPortfolioSnapshot } from "@/lib/portfolio/engine";
-import { appendAuditEvent, requireRedisForTrading, withIdempotency } from "@/lib/redis/coordination";
+import {
+  appendAuditEvent,
+  appendOperatorAuditLog,
+  enqueueTask,
+  requireRedisForTrading,
+  saveTradeWatchTask,
+  withIdempotency
+} from "@/lib/redis/coordination";
 import { KalshiClient } from "@/lib/kalshi/client";
 import { evaluateRisk } from "@/lib/risk/engine";
 import { evaluateCompliance } from "@/lib/compliance/engine";
@@ -63,21 +79,95 @@ export async function approvePaperTrade(
           auditId
         )
       );
+      const watchTasks = buildTradeWatchTasks(order, researchedOpportunity);
+      await Promise.all(watchTasks.map((task) => saveTradeWatchTask(task)));
+      await Promise.all(watchTasks.map((task) =>
+        enqueueTask("trade-monitor", {
+          kind: "trade_watch",
+          taskId: task.id,
+          ticker: task.ticker,
+          sector: task.sector,
+          createdAt: task.createdAt
+        })
+      ));
       return { order: { ...order, status: "paper_filled" as const }, portfolio, blocked: false };
     });
     return { ...result.value, replayed: result.replayed };
   });
 }
 
+export async function previewLiveTrade(opportunity: Opportunity): Promise<LiveOrderPreview> {
+  return traceAsync("execution.live_preview", { opportunityId: opportunity.id, ticker: opportunity.market.ticker }, async () => {
+    await requireRedisForTrading();
+    const env = getEnv();
+    const live = livePrerequisites(env);
+    const researchedOpportunity = await researchOpportunityWithBrowserAgent(opportunity);
+    const portfolio = await getPortfolioSnapshot();
+    const draftOrder = buildTradeOrder(researchedOpportunity, "live", "operator", `audit-preview-${Date.now()}`);
+    const risk = evaluateRisk(
+      {
+        market: researchedOpportunity.market,
+        forecast: researchedOpportunity.forecast,
+        requestedNotional: orderNotional(draftOrder),
+        portfolio
+      },
+      getRiskLimits()
+    );
+    const compliance = evaluateCompliance({
+      market: researchedOpportunity.market,
+      thesis: researchedOpportunity.thesis,
+      forecast: researchedOpportunity.forecast
+    });
+    const reasons = [
+      ...live.missing,
+      ...(!risk.approved ? risk.reasons : []),
+      ...(!compliance.approved ? compliance.blockedReasons : [])
+    ];
+    const preview: LiveOrderPreview = {
+      id: `live-preview-${opportunity.id}-${Date.now()}`,
+      opportunityId: opportunity.id,
+      ticker: opportunity.market.ticker,
+      dryRun: true,
+      blocked: reasons.length > 0,
+      reasons,
+      order: risk.approved && compliance.approved ? buildTradeOrder({ ...researchedOpportunity, risk, compliance }, "live", "operator", draftOrder.auditId) : draftOrder,
+      risk,
+      compliance,
+      livePrerequisites: live.missing,
+      operatorApprovalRequired: true,
+      createdAt: new Date().toISOString()
+    };
+    await appendOperatorAuditLog({
+      type: "live_order_preview",
+      opportunityId: opportunity.id,
+      ticker: opportunity.market.ticker,
+      blocked: preview.blocked,
+      reasons: preview.reasons
+    });
+    await appendAuditEvent(
+      auditEvent(
+        "live_gate",
+        "Execution Supervisor Agent",
+        `Dry-run live preview ${preview.blocked ? "blocked" : "ready"} for ${preview.ticker}.`,
+        preview.blocked ? "warning" : "info",
+        preview.id,
+        { preview }
+      )
+    );
+    return preview;
+  });
+}
+
 export async function executeLiveTrade(opportunity: Opportunity, approvalToken?: string) {
   return traceAsync("execution.live_order", { opportunityId: opportunity.id, approvalTokenPresent: Boolean(approvalToken) }, async () => {
     const env = getEnv();
-    const live = livePrerequisites(env);
-    if (!live.ok) {
+    const preview = await previewLiveTrade(opportunity);
+    if (preview.blocked) {
       return {
         blocked: true,
-        code: "LIVE_TRADING_DISABLED",
-        reasons: live.missing
+        code: "LIVE_PREVIEW_BLOCKED",
+        reasons: preview.reasons,
+        preview
       };
     }
     if (!approvalToken || approvalToken !== `approve:${opportunity.id}`) {
@@ -133,6 +223,13 @@ export async function executeLiveTrade(opportunity: Opportunity, approvalToken?:
     await appendAuditEvent(
       auditEvent("live_gate", "Execution Supervisor Agent", `Submitted gated live order ${order.id} to Kalshi.`, "success", order.auditId)
     );
+    await appendOperatorAuditLog({
+      type: "live_order_submitted",
+      opportunityId: opportunity.id,
+      ticker: order.ticker,
+      orderId: order.id,
+      approvalToken: "[redacted]"
+    });
     return { blocked: false, order: { ...order, status: "live_submitted" as const }, kalshi: response.value };
   });
 }
@@ -267,6 +364,51 @@ export function buildTradeOrder(
     calibrationBucket: calibrationBucket(sideForecastProbability),
     createdAt: new Date().toISOString()
   };
+}
+
+function buildTradeWatchTasks(order: TradeOrder, opportunity: Opportunity): TradeWatchTask[] {
+  const dueAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  const base = {
+    orderId: order.id,
+    opportunityId: opportunity.id,
+    ticker: order.ticker,
+    sector: order.sector,
+    status: "open" as const,
+    createdAt: new Date().toISOString(),
+    dueAt
+  };
+  return [
+    {
+      ...base,
+      id: `watch-${order.id}-invalidation`,
+      assignedTo: "Research Director Agent",
+      trigger: "Thesis invalidation review",
+      invalidation: opportunity.thesis.invalidation,
+      publicSignals: opportunity.thesis.bearCase.length ? opportunity.thesis.bearCase : ["Check public sources for facts that contradict the trade thesis."],
+      closeRules: ["Close or reduce if the primary invalidation condition becomes public and credible."],
+      notifyPodIds: [opportunity.podId]
+    },
+    {
+      ...base,
+      id: `watch-${order.id}-public-signal`,
+      assignedTo: "Browser Research Agent",
+      trigger: "Public signal changed",
+      invalidation: opportunity.thesis.invalidation,
+      publicSignals: [`Re-check settlement source and public context for ${opportunity.market.title}.`],
+      closeRules: ["Escalate to CIO if public odds/news move against fair value by more than the original edge."],
+      notifyPodIds: [opportunity.podId]
+    },
+    {
+      ...base,
+      id: `watch-${order.id}-early-close`,
+      assignedTo: "Execution Supervisor Agent",
+      trigger: "Early close or resize",
+      invalidation: opportunity.thesis.invalidation,
+      publicSignals: ["Monitor mark-to-market, liquidity, spread, and time-to-close."],
+      closeRules: ["Close if expected value flips negative, liquidity vanishes, or risk counteroffer conditions are no longer met."],
+      notifyPodIds: [opportunity.podId]
+    }
+  ];
 }
 
 function auditEvent(

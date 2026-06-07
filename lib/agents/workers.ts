@@ -9,9 +9,11 @@ import { getPortfolioSnapshot } from "@/lib/portfolio/engine";
 import { getMarkets } from "@/lib/services/market-service";
 import {
   ackTask,
+  appendBudgetCommitteeRecord,
   appendAuditEvent,
   ensureTaskConsumerGroup,
   readTaskBatch,
+  savePodMemoryRecord,
   type RedisStreamTask
 } from "@/lib/redis/coordination";
 import { traceAsync } from "@/lib/observability/weave";
@@ -22,6 +24,8 @@ export const FUND_WORKER_STREAMS = [
   "cio-paper-cycle",
   "postmortem",
   "policy-learning",
+  "fund-memory",
+  "trade-monitor",
   "executive-review"
 ] as const;
 
@@ -121,6 +125,24 @@ async function handleWorkerTask(task: RedisStreamTask): Promise<WorkerTaskResult
       const result = await runAgentLearningLoop({ enqueueTask: false });
       return processed(task, kind, `Policy learning ${result.status}: ${result.reason}`);
     }
+    if (kind === "fund_memory_snapshot") {
+      const marketResult = await getMarkets();
+      const portfolio = await getPortfolioSnapshot();
+      const opportunities = await getOpportunities();
+      const state = buildFundOperatingState({ markets: marketResult.markets, opportunities, portfolio });
+      await Promise.all(state.podMemory.slice(0, 40).map((record) => savePodMemoryRecord(record)));
+      await Promise.all(state.budgetCommitteeRecords.slice(0, 12).map((record) => appendBudgetCommitteeRecord(record)));
+      await appendAuditEvent(
+        auditEvent(
+          "agent_decision",
+          "Fund Memory Archivist Agent",
+          `Archived ${state.podMemory.length} memory records and ${state.budgetCommitteeRecords.length} budget decisions.`,
+          "success",
+          { memory: state.podMemory.slice(0, 8), budget: state.budgetCommitteeRecords.slice(0, 8), task: task.message }
+        )
+      );
+      return processed(task, kind, `Archived ${state.podMemory.length} pod memories.`);
+    }
     if (kind === "executive_review") {
       const result = await runExecutiveCommitteeReview({ enqueueTask: false });
       return processed(task, kind, `Executive committee produced ${result.decisions.length} decisions.`);
@@ -146,12 +168,12 @@ async function handleWorkerTask(task: RedisStreamTask): Promise<WorkerTaskResult
         auditEvent(
           "agent_decision",
           "Cross-Pod Collaboration Chair",
-          `Ran analyst check-ins: ${state.crossPodBriefings.length} cross-pod briefings shared across ${state.pods.length} pods.`,
-          state.crossPodBriefings.length ? "info" : "warning",
-          { briefings: state.crossPodBriefings.slice(0, 8), task: task.message }
+          `Ran analyst check-ins: ${state.crossPodBriefings.length} briefings and ${state.crossPodConflicts.length} arbitrations across ${state.pods.length} pods.`,
+          state.crossPodConflicts.length ? "warning" : state.crossPodBriefings.length ? "info" : "warning",
+          { briefings: state.crossPodBriefings.slice(0, 8), conflicts: state.crossPodConflicts.slice(0, 8), task: task.message }
         )
       );
-      return processed(task, kind, `Shared ${state.crossPodBriefings.length} cross-pod briefings.`);
+      return processed(task, kind, `Shared ${state.crossPodBriefings.length} briefings and ${state.crossPodConflicts.length} arbitrations.`);
     }
     if (kind === "risk_cluster_review") {
       await appendAuditEvent(
@@ -164,6 +186,18 @@ async function handleWorkerTask(task: RedisStreamTask): Promise<WorkerTaskResult
         )
       );
       return processed(task, kind, "Cluster risk task audited.");
+    }
+    if (kind === "trade_watch") {
+      await appendAuditEvent(
+        auditEvent(
+          "agent_decision",
+          "Trade Watch Monitor Agent",
+          `Opened trade-watch review for ${task.message.ticker ?? "unknown ticker"} in ${task.message.sector ?? "unknown sector"}.`,
+          "info",
+          { task: task.message }
+        )
+      );
+      return processed(task, kind, "Trade watch task audited.");
     }
     await appendAuditEvent(
       auditEvent("system", "Redis Stream Worker Supervisor", `No specific handler for ${kind}; task acknowledged after audit.`, "info", {

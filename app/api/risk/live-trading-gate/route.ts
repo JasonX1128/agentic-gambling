@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { boolEnv, getEnv, livePrerequisites } from "@/lib/config/env";
 import { liveGateDecision } from "@/lib/risk/engine";
-import { appendAuditEvent } from "@/lib/redis/coordination";
+import { appendAuditEvent, appendOperatorAuditLog } from "@/lib/redis/coordination";
 import { operatorAuthResponse } from "@/lib/security/operator-auth";
 
 export const runtime = "nodejs";
@@ -37,6 +37,13 @@ export async function POST(req: NextRequest) {
       severity: decision.approved ? "success" : "warning",
       createdAt: new Date().toISOString(),
       payload: { request: parsed.data, decision }
+    });
+    await appendOperatorAuditLog({
+      type: "live_gate_request",
+      requestedState: parsed.data.state,
+      approved: decision.approved && parsed.data.state === "enabled",
+      reason: parsed.data.reason,
+      blockers: decision.reasons
     });
   } catch {
     // Audit failure cannot enable live trading.

@@ -23,16 +23,21 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type {
   AgentNode,
+  BudgetCommitteeRecord,
+  CrossPodConflict,
   CrossPodBriefing,
   DemoRun,
   ExecutiveReview,
   IntegrationStatus,
   Market,
   Opportunity,
+  PodMemoryRecord,
+  PodAttribution,
   PodProposal,
   PortfolioSnapshot,
   ResearchScout,
-  SectorPod
+  SectorPod,
+  TradeWatchTask
 } from "@/lib/domain";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { EventFundCopilotActions } from "@/components/copilot/EventFundCopilotActions";
@@ -104,8 +109,8 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
     <Providers>
     <main id="command-top" className="min-h-screen bg-[#eef1f5] text-ink">
       <EventFundCopilotActions data={data} />
-      <div className={`grid min-h-screen ${sidebarOpen ? "grid-cols-[240px_minmax(0,1fr)]" : "grid-cols-[64px_minmax(0,1fr)]"}`}>
-        <aside className="self-start border-r border-line bg-white">
+      <div className={`grid min-h-screen grid-cols-1 ${sidebarOpen ? "lg:grid-cols-[240px_minmax(0,1fr)]" : "lg:grid-cols-[64px_minmax(0,1fr)]"}`}>
+        <aside className="self-start border-b border-line bg-white lg:border-b-0 lg:border-r">
           <div className={`border-b border-line ${sidebarOpen ? "px-4 py-4" : "px-2 py-3"}`}>
             <div className="flex items-start justify-between gap-2">
               {sidebarOpen ? (
@@ -128,12 +133,12 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
               <div className="sr-only">EventFund OS Command Center</div>
             ) : null}
           </div>
-          <nav className={`${sidebarOpen ? "px-3" : "px-2"} space-y-1 py-4 text-sm`}>
+          <nav className={`${sidebarOpen ? "px-3" : "px-2"} flex flex-wrap gap-1 py-3 text-sm lg:block lg:space-y-1 lg:py-4`}>
             {navItems.map(([label, Icon, targetId]) => (
               <button
                 key={String(label)}
                 aria-label={label}
-                className={`flex w-full items-center gap-2 rounded-md py-2 text-left text-slate-700 hover:bg-slate-100 ${sidebarOpen ? "px-3" : "justify-center px-0"}`}
+                className={`flex min-w-0 items-center gap-2 rounded-md py-2 text-left text-slate-700 hover:bg-slate-100 lg:w-full ${sidebarOpen ? "px-3" : "justify-center px-2 lg:px-0"}`}
                 onClick={() => scrollToSection(targetId)}
                 title={label}
                 type="button"
@@ -173,7 +178,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
             <Metric label="Active/PIP" value={`${activePods.length}/${stressedPods.length}`} tone={stressedPods.length ? "negative" : undefined} />
           </div>
 
-          <div className="grid min-h-0 flex-1 grid-cols-2 gap-4 p-5">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-5 lg:grid-cols-2">
             <Panel title="Kalshi Market Watchlist" icon={<Landmark className="h-4 w-4" />} id="markets-panel">
               {data.marketBlocker ? (
                 <div className="mb-3 rounded-md border border-warning bg-amber-50 p-3 text-xs leading-5 text-warning">
@@ -228,7 +233,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
               </div>
             </Panel>
 
-            <div className="col-span-2 grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 lg:col-span-2 lg:grid-cols-3">
               <Panel title="Risk & Compliance" icon={<ShieldAlert className="h-4 w-4" />} id="risk-panel">
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
@@ -289,8 +294,8 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 px-5 pb-5">
-            <Panel title="Trading Agent Swarm" icon={<CircuitBoard className="h-4 w-4" />} id="agents-panel" className="col-span-2">
+          <div className="grid grid-cols-1 gap-4 px-5 pb-5 lg:grid-cols-2">
+            <Panel title="Trading Agent Swarm" icon={<CircuitBoard className="h-4 w-4" />} id="agents-panel" className="lg:col-span-2">
               <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-2">
                 {data.fundAgents.map((agent) => (
                   <AgentCard key={agent.id} agent={agent} />
@@ -309,11 +314,24 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
                 proposals={data.podProposals}
                 reviews={data.executiveReviews}
                 briefings={data.crossPodBriefings}
+                conflicts={data.crossPodConflicts}
+                attributions={data.podAttributions}
+                memory={data.podMemory}
+                budgetHistory={data.budgetHistory}
               />
             </Panel>
 
             <Panel title="Execution Tape & Audit" icon={<ClipboardCheck className="h-4 w-4" />} id="execution-panel">
               <div className="space-y-2 text-sm">
+                {data.tradeWatchTasks.slice(0, 4).map((task) => (
+                  <div key={task.id} className="rounded-md border border-warning/30 bg-amber-50 p-2 text-xs text-warning">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="break-words font-semibold">{task.ticker} watch: {task.trigger}</span>
+                      <span className="font-mono">{new Date(task.dueAt).toLocaleTimeString()}</span>
+                    </div>
+                    <div className="mt-1 break-words text-slate-700">{task.publicSignals[0]}</div>
+                  </div>
+                ))}
                 {data.activity.map((event) => (
                   <div key={event.id} className="flex items-start justify-between gap-3 border-b border-slate-100 pb-2">
                     <div>
@@ -395,12 +413,20 @@ function GovernancePanel({
   scouts,
   proposals,
   reviews,
-  briefings
+  briefings,
+  conflicts,
+  attributions,
+  memory,
+  budgetHistory
 }: {
   scouts: ResearchScout[];
   proposals: PodProposal[];
   reviews: ExecutiveReview[];
   briefings: CrossPodBriefing[];
+  conflicts: CrossPodConflict[];
+  attributions: PodAttribution[];
+  memory: PodMemoryRecord[];
+  budgetHistory: BudgetCommitteeRecord[];
 }) {
   return (
     <div className="space-y-4 text-xs">
@@ -427,6 +453,63 @@ function GovernancePanel({
           </div>
         ))}
         {briefings.length === 0 ? <div className="text-slate-500">No cross-pod briefings yet; pods need more live markets or approved candidates.</div> : null}
+      </div>
+      <div>
+        <div className="mb-2 font-semibold text-slate-700">Conflict escalations</div>
+        {conflicts.slice(0, 3).map((conflict) => (
+          <div key={conflict.id} className="mb-2 rounded-md border border-danger/20 bg-rose-50 p-2 last:mb-0">
+            <div className="flex items-start justify-between gap-2">
+              <span className="break-words font-semibold">{conflict.sectors.join(" / ")}</span>
+              <StatusPill tone={conflict.severity === "escalate" ? "danger" : "warning"}>{conflict.conflictType}</StatusPill>
+            </div>
+            <div className="mt-1 break-words text-slate-700">{conflict.summary}</div>
+            <div className="mt-1 break-words text-slate-600">{conflict.arbitrator}: {conflict.decision}</div>
+          </div>
+        ))}
+        {conflicts.length === 0 ? <div className="text-slate-500">No cross-pod conflicts requiring arbitration.</div> : null}
+      </div>
+      <div>
+        <div className="mb-2 font-semibold text-slate-700">Pod attribution</div>
+        {attributions.slice(0, 3).map((attribution) => (
+          <div key={attribution.podId} className="mb-2 rounded-md border border-line p-2 last:mb-0">
+            <div className="flex items-start justify-between gap-2">
+              <span className="break-words font-semibold">{attribution.sector}</span>
+              <span className="font-mono text-[11px] text-slate-500">PnL ${attribution.totalPnl}</span>
+            </div>
+            <div className="mt-1 grid grid-cols-3 gap-2 font-mono text-[11px] text-slate-600">
+              <span>quality {(attribution.executionQuality * 100).toFixed(0)}%</span>
+              <span>blocked {(attribution.blockedRate * 100).toFixed(0)}%</span>
+              <span>brier {attribution.brierScore.toFixed(2)}</span>
+            </div>
+            <div className="mt-1 break-words text-slate-600">{attribution.analysts[0]?.analystRole}: score {attribution.analysts[0]?.contributionScore.toFixed(0) ?? "n/a"}</div>
+          </div>
+        ))}
+      </div>
+      <div>
+        <div className="mb-2 font-semibold text-slate-700">Budget committee history</div>
+        {budgetHistory.slice(0, 3).map((record) => (
+          <div key={record.id} className="mb-2 rounded-md border border-line p-2 last:mb-0">
+            <div className="flex items-start justify-between gap-2">
+              <span className="break-words font-semibold">{record.sector}</span>
+              <StatusPill tone={record.decision === "expand" ? "success" : record.decision === "shrink" || record.decision === "freeze" ? "warning" : "neutral"}>
+                {record.decision}
+              </StatusPill>
+            </div>
+            <div className="mt-1 break-words text-slate-600">{record.rationale}</div>
+          </div>
+        ))}
+      </div>
+      <div>
+        <div className="mb-2 font-semibold text-slate-700">Pod memory</div>
+        {memory.slice(0, 3).map((record) => (
+          <div key={record.id} className="mb-2 rounded-md border border-line bg-slate-50 p-2 last:mb-0">
+            <div className="flex items-start justify-between gap-2">
+              <span className="break-words font-semibold">{record.sector}</span>
+              <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] uppercase text-slate-500">{record.type}</span>
+            </div>
+            <div className="mt-1 break-words text-slate-600">{record.summary}</div>
+          </div>
+        ))}
       </div>
       <div>
         <div className="mb-2 font-semibold text-slate-700">Research scouts</div>

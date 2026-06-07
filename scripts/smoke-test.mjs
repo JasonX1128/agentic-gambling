@@ -29,6 +29,7 @@ const requiredFiles = [
   "app/api/portfolio/mark-to-market/route.ts",
   "app/api/trades/[id]/close/route.ts",
   "app/api/trades/[id]/settle/route.ts",
+  "app/api/trades/[id]/live-preview/route.ts",
   "components/copilot/EventFundCopilotActions.tsx",
   "lib/risk/engine.ts",
   "lib/risk/event-cluster.ts",
@@ -78,6 +79,7 @@ const approveBlock = execution.slice(approveStart, liveStart);
 const checks = [
   ["paper execution does not call Kalshi", approveBlock.includes("approvePaperTrade") && !approveBlock.includes("createOrder")],
   ["live execution requires approval token", execution.includes("LIVE_GATE_REQUIRED")],
+  ["live dry-run preview exists before live execution", execution.includes("previewLiveTrade") && fs.readFileSync("app/api/trades/[id]/live-preview/route.ts", "utf8").includes("previewLiveTrade")],
   ["live prerequisites include kill switch", config.includes("GLOBAL_KILL_SWITCH=false")],
   [
     "CopilotKit default agent route exists",
@@ -98,6 +100,8 @@ const checks = [
   ["continuous paper daemon enqueues worker tasks", daemon.includes("runPaperTradingDaemonTick") && daemon.includes("enqueueDaemonTasks")],
   ["Redis Stream workers consume fund queues", workers.includes("readTaskBatch") && workers.includes("ackTask") && workers.includes("runPaperCycle")],
   ["cross-pod collaboration worker shares analyst check-ins", workers.includes("cross_pod_checkin") && daemon.includes("cross_pod_checkin") && policyConfig.includes("crossPodCollaboration")],
+  ["fund memory persists pod lessons and budget history", workers.includes("fund_memory_snapshot") && daemon.includes("fund_memory_snapshot") && fs.readFileSync("lib/redis/coordination.ts", "utf8").includes("savePodMemoryRecord")],
+  ["trade watch tasks spawn after paper fills", execution.includes("buildTradeWatchTasks") && workers.includes("trade_watch") && fs.readFileSync("lib/redis/coordination.ts", "utf8").includes("saveTradeWatchTask")],
   ["paper iteration defaults are faster", config.includes("PAPER_AGENT_MAX_TRADES_PER_CYCLE: z.coerce.number().default(60)") && config.includes("PAPER_DAEMON_INTERVAL_MS: z.coerce.number().default(60000)")],
   ["Kalshi market discovery paginates and scans production breadth", kalshiClient.includes("cursor") && config.includes("KALSHI_MARKET_SCAN_LIMIT") && config.includes("external-api.kalshi.com")],
   ["Kalshi market scans are cached", config.includes("KALSHI_MARKET_CACHE_TTL_MS") && marketService.includes("marketCache") && marketService.includes("pendingMarketScan")],

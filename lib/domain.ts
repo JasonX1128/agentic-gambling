@@ -418,6 +418,100 @@ export type CrossPodBriefing = {
   nextCheckInAt: string;
 };
 
+export type AnalystAttribution = {
+  analystRole: string;
+  contributionScore: number;
+  pnlAttribution: number;
+  brierScore: number;
+  notes: string;
+};
+
+export type PodAttribution = {
+  podId: string;
+  sector: string;
+  orderCount: number;
+  openPositions: number;
+  settledTrades: number;
+  blockedRate: number;
+  ruleAmbiguity: number;
+  executionQuality: number;
+  realizedPnl: number;
+  unrealizedPnl: number;
+  totalPnl: number;
+  brierScore: number;
+  winRate: number;
+  analysts: AnalystAttribution[];
+  updatedAt: string;
+};
+
+export type PodMemoryRecord = {
+  id: string;
+  podId: string;
+  sector: string;
+  type: "thesis" | "miss" | "good_call" | "settlement" | "cross_pod_lesson" | "budget_decision";
+  summary: string;
+  evidence: string[];
+  score: number;
+  createdAt: string;
+  relatedTickers: string[];
+};
+
+export type TradeWatchTask = {
+  id: string;
+  orderId: string;
+  opportunityId: string;
+  ticker: string;
+  sector: string;
+  assignedTo: string;
+  status: "open" | "triggered" | "closed";
+  trigger: string;
+  invalidation: string[];
+  publicSignals: string[];
+  closeRules: string[];
+  notifyPodIds: string[];
+  createdAt: string;
+  dueAt: string;
+};
+
+export type CrossPodConflict = {
+  id: string;
+  sourceBriefingId: string;
+  sectors: string[];
+  conflictType: "thesis_conflict" | "duplicated_exposure" | "risk_warning" | "calibration_warning";
+  severity: "watch" | "escalate";
+  summary: string;
+  arbitrator: "Research Director Agent" | "CIO / Senior PM Agent";
+  decision: string;
+  createdAt: string;
+};
+
+export type BudgetCommitteeRecord = {
+  id: string;
+  podId: string;
+  sector: string;
+  priorBudget: number;
+  nextBudget: number;
+  decision: "expand" | "hold" | "shrink" | "freeze";
+  rationale: string;
+  attribution: Pick<PodAttribution, "totalPnl" | "brierScore" | "winRate" | "executionQuality" | "blockedRate">;
+  createdAt: string;
+};
+
+export type LiveOrderPreview = {
+  id: string;
+  opportunityId: string;
+  ticker: string;
+  dryRun: true;
+  blocked: boolean;
+  reasons: string[];
+  order?: TradeOrder;
+  risk: RiskDecision;
+  compliance: ComplianceDecision;
+  livePrerequisites: string[];
+  operatorApprovalRequired: boolean;
+  createdAt: string;
+};
+
 export type PaperCycleResult = {
   cycleId: string;
   evaluated: number;
@@ -471,6 +565,11 @@ export type DemoRun = {
   podProposals: PodProposal[];
   executiveReviews: ExecutiveReview[];
   crossPodBriefings: CrossPodBriefing[];
+  crossPodConflicts: CrossPodConflict[];
+  podAttributions: PodAttribution[];
+  podMemory: PodMemoryRecord[];
+  tradeWatchTasks: TradeWatchTask[];
+  budgetHistory: BudgetCommitteeRecord[];
   policySummary: AgentOperatingPolicySummary;
   integrationStatus: IntegrationStatus[];
 };

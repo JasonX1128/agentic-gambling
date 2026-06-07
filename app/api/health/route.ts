@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getTradingMode, staticIntegrationStatus } from "@/lib/config/env";
+import { getAgentAutomationConfig, getEnv, getTradingMode, livePrerequisites, staticIntegrationStatus } from "@/lib/config/env";
 import { copilotKitHealth } from "@/lib/llm/health";
 import { redisHealth } from "@/lib/redis/client";
 
@@ -8,6 +8,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const [redis, copilotKit] = await Promise.all([redisHealth(), copilotKitHealth()]);
+  const env = getEnv();
+  const live = livePrerequisites(env);
+  const automation = getAgentAutomationConfig();
   const integrations = staticIntegrationStatus().map((status) => {
     if (status.name === "Redis") return redis;
     if (status.name === "CopilotKit") return copilotKit;
@@ -31,6 +34,16 @@ export async function GET() {
       uptimeSeconds: Math.round(process.uptime()),
       checkedAt: new Date().toISOString(),
       blockers,
+      liveReadiness: {
+        ready: live.ok,
+        missing: live.missing,
+        dryRunPreviewRoute: "/api/trades/[id]/live-preview",
+        liveExecutionRoute: "/api/trades/[id]/execute"
+      },
+      accessControl: {
+        operatorAuthRequired: automation.operatorAuthRequired,
+        operatorAuthConfigured: automation.operatorAuthConfigured
+      },
       integrations
     },
     { status: readiness === "ready" ? 200 : 503 }

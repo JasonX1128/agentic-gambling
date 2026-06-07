@@ -14,10 +14,12 @@ This repo was created as a greenfield implementation in an empty workspace.
 - Multi-agent trading hierarchy: CIO, CRO, compliance, research director, execution supervisor, and dynamic sector pods.
 - Dynamic pod governance: research scouts propose new pods, pods resize analyst headcount and capital budgets, losing pods move to PIP/defense, and idle scouts sleep until new markets appear.
 - Cross-pod collaboration: analyst check-ins share pod-specific insights, watch items, and proposed actions with adjacent pods before the CIO cycle.
+- Redis-backed pod memory, pod/analyst attribution, conflict escalation, and budget committee history so pods defend capital with an inspectable record.
 - File-backed agent operating policy at `config/agent-operating-policy.json` for prompts, role rights, sector rules, pod lifecycle thresholds, analyst allocation, pod capital budgeting, cross-pod cadence, scout sleep cadence, proposal thresholds, and paper-cycle scoring.
 - Executive roster governance: required seats can be replaced, but protected control functions such as compliance, risk, and execution cannot be left vacant.
 - Quant scoring: market-implied probability, fair probability, EV, confidence, liquidity quality, capped Kelly sizing, Brier/calibration helpers.
 - Paper trading engine that updates Redis-backed portfolio state.
+- Post-fill trade watch tasks for invalidation checks, public-signal changes, and early close/resize review.
 - CIO-driven paper cycle endpoint that allocates per-pod paper capital, reserves probes for incubating pods, enqueues Redis Stream tasks, writes audit events, and executes the approved paper slate.
 - Continuous paper-trading daemon that scans markets, marks positions, enqueues Redis Stream work, runs bounded workers, and audits each tick.
 - Redis Stream workers for research, cross-pod check-ins, risk cluster review, paper execution, settlement reconciliation, policy learning, and executive committee review.
@@ -27,7 +29,7 @@ This repo was created as a greenfield implementation in an empty workspace.
 - Event-cluster exposure risk checks across related Kalshi contracts.
 - Production operator-token guard for mutating control routes.
 - Paper close, settlement, mark-to-market, realized/unrealized/settled PnL, and Brier/calibration accounting.
-- Live order path present but blocked unless every live prerequisite is satisfied.
+- Live order path present with a dry-run preview/audit route and blocked unless every live prerequisite is satisfied.
 - Risk/compliance engines that block unsafe trades server-side.
 
 ## Run Locally
@@ -267,10 +269,13 @@ Dynamic pod governance:
 - When a theme has enough market depth and approved paper opportunities, scouts propose or incubate a pod.
 - Each pod receives a capital budget from its lifecycle, approved pipeline, mandate score, market depth, and PnL. Paper cycles reserve first probes for incubating pods, then deploy remaining capacity by pod budget and score.
 - Analysts periodically publish cross-pod check-ins with shared catalysts, duplicated-risk warnings, liquidity/rules observations, and proposed actions for pods that may be affected.
+- Cross-pod conflicts are escalated to the Research Director/CIO when adjacent pods disagree, duplicate exposure, or trade correlated markets with inconsistent theses.
+- Pod memory records store recent lessons, watch items, attribution summaries, and budget-rationale history in Redis for later cycles.
 - If no proposal clears the threshold, the scout records a sleep-until time instead of pretending to work forever.
 - Active pods defend analyst headcount with PnL, calibration, opportunities, and liquidity.
 - Losing pods move to PIP or executive defense, reducing analyst count and requiring a defense memo before more risk budget.
 - The executive committee loop records open, expand, hold, PIP, freeze, close-or-merge, or sleep decisions based on pod PnL and mandate score.
+- Realistic partial-fill/slippage modeling for paper orders is intentionally deferred; current paper fills still use the approved limit/mark path.
 
 Agent learning loop:
 
@@ -302,6 +307,7 @@ Agent operating policy:
 - `GET /api/agents/policy`
 - `POST /api/agents/policy`
 - `POST /api/trades/:id/approve`
+- `POST /api/trades/:id/live-preview`
 - `POST /api/trades/:ticker/close`
 - `POST /api/trades/:ticker/settle`
 - `POST /api/trades/:id/execute`

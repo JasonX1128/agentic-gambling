@@ -1,11 +1,15 @@
 import type {
   AgentNode,
+  BudgetCommitteeRecord,
+  CrossPodConflict,
   CrossPodBriefing,
   ExecutiveReview,
   Market,
   Opportunity,
+  PodAttribution,
   PodLifecycleStatus,
   PodMandate,
+  PodMemoryRecord,
   PodProposal,
   PortfolioSnapshot,
   ResearchScout,
@@ -27,6 +31,10 @@ export function buildFundOperatingState(input: {
   podProposals: PodProposal[];
   executiveReviews: ExecutiveReview[];
   crossPodBriefings: CrossPodBriefing[];
+  crossPodConflicts: CrossPodConflict[];
+  podAttributions: PodAttribution[];
+  podMemory: PodMemoryRecord[];
+  budgetCommitteeRecords: BudgetCommitteeRecord[];
 } {
   const podKeys = Array.from(new Set([
     ...input.markets.map((market) => classifyPodSector(market)),
@@ -42,6 +50,10 @@ export function buildFundOperatingState(input: {
   const podProposals = buildPodProposals(pods, input.markets, input.opportunities);
   const researchScouts = buildResearchScouts(pods, podProposals, input.markets);
   const crossPodBriefings = buildCrossPodBriefings(pods, input.markets, input.opportunities);
+  const podAttributions = buildPodAttributions(pods, input.opportunities, input.portfolio);
+  const crossPodConflicts = buildCrossPodConflicts(pods, crossPodBriefings, input.portfolio);
+  const budgetCommitteeRecords = buildBudgetCommitteeRecords(pods, podAttributions);
+  const podMemory = buildPodMemoryRecords(pods, input.opportunities, input.portfolio, crossPodBriefings, crossPodConflicts, budgetCommitteeRecords);
   const executiveReviews = pods
     .filter((pod) => pod.lifecycleStatus === "pip" || pod.lifecycleStatus === "defense" || pod.mandate.totalPnl < 0)
     .map((pod) => ({
@@ -58,7 +70,17 @@ export function buildFundOperatingState(input: {
           : getFundGovernancePolicy().executiveReviewDecisions.pip,
       dueAt: pod.mandate.defenseDueAt ?? pod.mandate.nextReviewAt
     }));
-  return { pods, researchScouts, podProposals, executiveReviews, crossPodBriefings };
+  return {
+    pods,
+    researchScouts,
+    podProposals,
+    executiveReviews,
+    crossPodBriefings,
+    crossPodConflicts,
+    podAttributions,
+    podMemory,
+    budgetCommitteeRecords
+  };
 }
 
 export function classifyPodSector(market: Market): string {
@@ -384,6 +406,260 @@ function uniquePods(pods: SectorPod[]): SectorPod[] {
   return [...new Map(pods.map((pod) => [pod.id, pod])).values()];
 }
 
+function buildPodAttributions(pods: SectorPod[], opportunities: Opportunity[], portfolio: PortfolioSnapshot): PodAttribution[] {
+  const roles = ["Sector PM Agent", "Sector Risk Agent", ...getFundGovernancePolicy().analystRoles];
+  return pods.map((pod) => {
+    const podOpportunities = opportunities.filter((opportunity) => classifyPodSector(opportunity.market) === pod.sector);
+    const blocked = podOpportunities.filter((opportunity) => !opportunity.risk.approved || !opportunity.compliance.approved);
+    const orders = portfolio.orders.filter((order) => classifyTickerPod(order.ticker, order.sector) === pod.sector);
+    const positions = portfolio.positions.filter((position) => classifyTickerPod(position.ticker, position.sector) === pod.sector);
+    const settlements = portfolio.settlements.filter((settlement) => classifyTickerPod(settlement.ticker, settlement.sector) === pod.sector);
+    const scoredSettlements = settlements.filter((settlement) => settlement.brierScore !== undefined);
+    const brier = scoredSettlements.length
+      ? average(scoredSettlements.map((settlement) => settlement.brierScore ?? 0))
+      : 0;
+    const wins = scoredSettlements.filter((settlement) => settlement.side === settlement.outcome).length;
+    const blockedRate = podOpportunities.length ? blocked.length / podOpportunities.length : 0;
+    const ruleAmbiguity = podOpportunities.length
+      ? average(podOpportunities.map(ruleAmbiguityForOpportunity))
+      : 0;
+    const executionQuality = Math.max(
+      0,
+      Math.min(
+        1,
+        1 -
+          blockedRate * 0.35 -
+          ruleAmbiguity * 0.25 -
+          average(podOpportunities.map((opportunity) => opportunity.risk.riskScore / 100)) * 0.2
+      )
+    );
+    const analystRoles = roles.slice(0, Math.max(1, Math.min(roles.length, pod.mandate.analystCount)));
+    return {
+      podId: pod.id,
+      sector: pod.sector,
+      orderCount: orders.length,
+      openPositions: positions.length,
+      settledTrades: settlements.length,
+      blockedRate: round(blockedRate),
+      ruleAmbiguity: round(ruleAmbiguity),
+      executionQuality: round(executionQuality),
+      realizedPnl: pod.mandate.realizedPnl,
+      unrealizedPnl: pod.mandate.unrealizedPnl,
+      totalPnl: pod.mandate.totalPnl,
+      brierScore: round(brier),
+      winRate: scoredSettlements.length ? round(wins / scoredSettlements.length) : 0,
+      analysts: analystRoles.map((role, index) => analystAttribution(role, index, analystRoles.length, pod, executionQuality, brier)),
+      updatedAt: nowIso()
+    };
+  });
+}
+
+function buildCrossPodConflicts(
+  pods: SectorPod[],
+  briefings: CrossPodBriefing[],
+  portfolio: PortfolioSnapshot
+): CrossPodConflict[] {
+  return briefings.flatMap((briefing) => {
+    const exposedTargets = briefing.toSectors.filter((sector) => (portfolio.sectorExposure[sector] ?? 0) > 0);
+    const sourcePod = pods.find((pod) => pod.id === briefing.fromPodId);
+    const conflicts: CrossPodConflict[] = [];
+    if (briefing.urgency === "escalate" && sourcePod) {
+      conflicts.push({
+        id: `conflict-${briefing.id}-urgency`,
+        sourceBriefingId: briefing.id,
+        sectors: [briefing.fromSector, ...briefing.toSectors],
+        conflictType: sourcePod.lifecycleStatus === "pip" || sourcePod.lifecycleStatus === "defense" ? "calibration_warning" : "risk_warning",
+        severity: "escalate",
+        summary: `${briefing.fromSector} is ${sourcePod.lifecycleStatus}; Research Director must decide how much of its signal other pods may rely on.`,
+        arbitrator: "Research Director Agent",
+        decision: "Require receiving pods to cite independent public evidence before sharing this catalyst in their own thesis.",
+        createdAt: nowIso()
+      });
+    }
+    if (exposedTargets.length) {
+      conflicts.push({
+        id: `conflict-${briefing.id}-exposure`,
+        sourceBriefingId: briefing.id,
+        sectors: [briefing.fromSector, ...exposedTargets],
+        conflictType: "duplicated_exposure",
+        severity: "watch",
+        summary: `${briefing.fromSector} briefing touches pods that already have exposure: ${exposedTargets.join(", ")}.`,
+        arbitrator: "CIO / Senior PM Agent",
+        decision: "CIO should compare exposure clusters before adding more paper risk to affected pods.",
+        createdAt: nowIso()
+      });
+    }
+    return conflicts;
+  }).slice(0, 8);
+}
+
+function buildBudgetCommitteeRecords(pods: SectorPod[], attributions: PodAttribution[]): BudgetCommitteeRecord[] {
+  const attributionByPod = new Map(attributions.map((attribution) => [attribution.podId, attribution]));
+  return pods.map((pod) => {
+    const attribution = attributionByPod.get(pod.id) ?? fallbackAttribution(pod);
+    const priorBudget = Math.max(0, pod.mandate.capitalBudget - budgetDeltaForAttribution(attribution));
+    const decision: BudgetCommitteeRecord["decision"] =
+      pod.lifecycleStatus === "defense" ? "freeze" :
+        attribution.totalPnl > 0 && attribution.executionQuality >= 0.65 ? "expand" :
+          attribution.totalPnl < 0 || attribution.blockedRate > 0.35 ? "shrink" : "hold";
+    return {
+      id: `budget-${pod.id}-${Date.now()}`,
+      podId: pod.id,
+      sector: pod.sector,
+      priorBudget: money(priorBudget),
+      nextBudget: pod.mandate.capitalBudget,
+      decision,
+      rationale: `${pod.mandate.budgetDecision} Attribution: PnL $${attribution.totalPnl}, execution quality ${(attribution.executionQuality * 100).toFixed(0)}%, blocked rate ${(attribution.blockedRate * 100).toFixed(0)}%.`,
+      attribution: {
+        totalPnl: attribution.totalPnl,
+        brierScore: attribution.brierScore,
+        winRate: attribution.winRate,
+        executionQuality: attribution.executionQuality,
+        blockedRate: attribution.blockedRate
+      },
+      createdAt: nowIso()
+    };
+  }).slice(0, 20);
+}
+
+function buildPodMemoryRecords(
+  pods: SectorPod[],
+  opportunities: Opportunity[],
+  portfolio: PortfolioSnapshot,
+  briefings: CrossPodBriefing[],
+  conflicts: CrossPodConflict[],
+  budgetRecords: BudgetCommitteeRecord[]
+): PodMemoryRecord[] {
+  const memories: PodMemoryRecord[] = [];
+  for (const pod of pods) {
+    const topOpportunity = opportunities
+      .filter((opportunity) => classifyPodSector(opportunity.market) === pod.sector)
+      .sort((a, b) => b.rankScore - a.rankScore)[0];
+    if (topOpportunity) {
+      memories.push({
+        id: `memory-${pod.id}-thesis-${topOpportunity.market.ticker}`,
+        podId: pod.id,
+        sector: pod.sector,
+        type: "thesis",
+        summary: `${pod.sector} top thesis: ${topOpportunity.thesis.summary}`,
+        evidence: topOpportunity.thesis.evidence.slice(0, 3).map((item) => item.title),
+        score: Math.max(0, topOpportunity.rankScore),
+        createdAt: nowIso(),
+        relatedTickers: [topOpportunity.market.ticker]
+      });
+    }
+    for (const settlement of portfolio.settlements.filter((row) => classifyTickerPod(row.ticker, row.sector) === pod.sector).slice(0, 2)) {
+      memories.push({
+        id: `memory-${pod.id}-settlement-${settlement.id}`,
+        podId: pod.id,
+        sector: pod.sector,
+        type: settlement.realizedPnl >= 0 ? "good_call" : "miss",
+        summary: `${settlement.ticker} settled ${settlement.outcome.toUpperCase()} for PnL $${settlement.realizedPnl}; Brier ${settlement.brierScore?.toFixed(4) ?? "n/a"}.`,
+        evidence: [settlement.notes ?? "Paper settlement record."],
+        score: Math.abs(settlement.realizedPnl) + (settlement.brierScore ? 1 - settlement.brierScore : 0),
+        createdAt: settlement.settledAt,
+        relatedTickers: [settlement.ticker]
+      });
+    }
+  }
+  for (const briefing of briefings) {
+    memories.push({
+      id: `memory-${briefing.id}`,
+      podId: briefing.fromPodId,
+      sector: briefing.fromSector,
+      type: "cross_pod_lesson",
+      summary: briefing.insight,
+      evidence: briefing.watchItems,
+      score: briefing.urgency === "escalate" ? 80 : briefing.urgency === "watch" ? 60 : 40,
+      createdAt: briefing.createdAt,
+      relatedTickers: briefing.relatedTickers
+    });
+  }
+  for (const conflict of conflicts) {
+    const source = pods.find((pod) => conflict.sectors.includes(pod.sector));
+    if (!source) continue;
+    memories.push({
+      id: `memory-${conflict.id}`,
+      podId: source.id,
+      sector: source.sector,
+      type: "cross_pod_lesson",
+      summary: `${conflict.summary} Decision: ${conflict.decision}`,
+      evidence: conflict.sectors,
+      score: conflict.severity === "escalate" ? 90 : 65,
+      createdAt: conflict.createdAt,
+      relatedTickers: []
+    });
+  }
+  for (const record of budgetRecords) {
+    memories.push({
+      id: `memory-${record.id}`,
+      podId: record.podId,
+      sector: record.sector,
+      type: "budget_decision",
+      summary: record.rationale,
+      evidence: [`${record.decision}: $${record.priorBudget} -> $${record.nextBudget}`],
+      score: record.nextBudget,
+      createdAt: record.createdAt,
+      relatedTickers: []
+    });
+  }
+  return memories.slice(0, 80);
+}
+
+function ruleAmbiguityForOpportunity(opportunity: Opportunity): number {
+  const complianceNoise = opportunity.compliance.warnings.length + opportunity.compliance.blockedReasons.length;
+  const shortRules = opportunity.market.ruleSummary.length < 48 ? 0.2 : 0;
+  const sourceMissing = opportunity.market.settlementSource ? 0 : 0.2;
+  return Math.min(1, complianceNoise * 0.15 + shortRules + sourceMissing);
+}
+
+function analystAttribution(
+  role: string,
+  index: number,
+  count: number,
+  pod: SectorPod,
+  executionQuality: number,
+  brier: number
+) {
+  const roleWeight =
+    role === "Sector PM Agent" ? 1.15 :
+      role === "Sector Risk Agent" ? 1.05 :
+        /Calibration/i.test(role) ? 1.1 :
+          /Contrarian/i.test(role) ? 1.0 : 0.95;
+  const pnlShare = count ? money((pod.mandate.totalPnl / count) * roleWeight) : 0;
+  return {
+    analystRole: role,
+    contributionScore: round(Math.max(0, Math.min(100, pod.mandate.mandateScore * roleWeight * executionQuality))),
+    pnlAttribution: pnlShare,
+    brierScore: round(brier),
+    notes: `${role} attribution inferred from pod PnL, execution quality, calibration, and blocked-rate contribution.`
+  };
+}
+
+function fallbackAttribution(pod: SectorPod): PodAttribution {
+  return {
+    podId: pod.id,
+    sector: pod.sector,
+    orderCount: 0,
+    openPositions: 0,
+    settledTrades: 0,
+    blockedRate: 0,
+    ruleAmbiguity: 0,
+    executionQuality: 0,
+    realizedPnl: pod.mandate.realizedPnl,
+    unrealizedPnl: pod.mandate.unrealizedPnl,
+    totalPnl: pod.mandate.totalPnl,
+    brierScore: 0,
+    winRate: 0,
+    analysts: [],
+    updatedAt: nowIso()
+  };
+}
+
+function budgetDeltaForAttribution(attribution: Pick<PodAttribution, "totalPnl" | "executionQuality" | "blockedRate">): number {
+  return attribution.totalPnl * 2 + attribution.executionQuality * 25 - attribution.blockedRate * 40;
+}
+
 function podPnlSnapshot(podKey: string, portfolio: PortfolioSnapshot, markets: Market[]) {
   const marketMap = new Map(markets.map((market) => [market.ticker, market]));
   const positionRows = portfolio.positions.filter((position) => classifyTickerPod(position.ticker, position.sector, marketMap.get(position.ticker)?.title) === podKey);
@@ -565,4 +841,14 @@ function slug(value: string) {
 
 function money(value: number) {
   return Number(value.toFixed(2));
+}
+
+function average(values: number[]) {
+  const finite = values.filter(Number.isFinite);
+  if (!finite.length) return 0;
+  return finite.reduce((sum, value) => sum + value, 0) / finite.length;
+}
+
+function round(value: number) {
+  return Number(value.toFixed(4));
 }

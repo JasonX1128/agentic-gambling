@@ -34,6 +34,7 @@ Implemented:
 - Locks with compare-and-delete Lua release.
 - Ranked opportunity sorted set.
 - Continuous daemon locks and worker queues for research, risk, paper-cycle, postmortem/reconciliation, policy learning, and executive review.
+- Pod memory hashes/sorted sets, trade watch task hashes/sorted sets, budget committee history, and operator audit logs.
 
 Blocked until Redis is running:
 
@@ -68,6 +69,7 @@ Implemented:
 - Readable compressed app state.
 - Actions for trade queries, recommendation explanations, risk-limit requests, opportunity filtering, CIO memos, paper trade approval, daemon ticks, Redis worker runs, learning proposals, reconciliation, executive review, and live-gate requests.
 - Action for running Browser Research Agent on a recommendation before approval.
+- Action for dry-run live order preview before any live submission path.
 
 Free local setup:
 

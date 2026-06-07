@@ -1,4 +1,4 @@
-import type { DemoRun, Opportunity } from "@/lib/domain";
+import type { BudgetCommitteeRecord, DemoRun, Opportunity, PodMemoryRecord, TradeWatchTask } from "@/lib/domain";
 import { agentHierarchy, buildDemoOpportunities, demoActivity } from "@/lib/data/seeds";
 import { buildFundOperatingState } from "@/lib/agents/fund-management";
 import { policySummary } from "@/lib/agents/operating-policy";
@@ -6,7 +6,14 @@ import { getMarkets } from "@/lib/services/market-service";
 import { getPortfolioSnapshot, markPortfolioToMarket } from "@/lib/portfolio/engine";
 import { staticIntegrationStatus } from "@/lib/config/env";
 import { redisHealth } from "@/lib/redis/client";
-import { getAuditEvents } from "@/lib/redis/coordination";
+import {
+  appendBudgetCommitteeRecord,
+  getAuditEvents,
+  loadBudgetCommitteeHistory,
+  loadPodMemoryRecords,
+  loadTradeWatchTasks,
+  savePodMemoryRecord
+} from "@/lib/redis/coordination";
 import { traceAsync } from "@/lib/observability/weave";
 
 export async function getOpportunities(): Promise<Opportunity[]> {
@@ -21,6 +28,12 @@ export async function runDemoWorkflow(): Promise<DemoRun> {
     const portfolio = await markPortfolioToMarket(marketResult.markets).catch(() => getPortfolioSnapshot());
     const opportunities = buildDemoOpportunities(marketResult.markets, portfolio);
     const fundState = buildFundOperatingState({ markets: marketResult.markets, opportunities, portfolio });
+    await persistFundOperatingMemory(fundState.podMemory, fundState.budgetCommitteeRecords).catch(() => undefined);
+    const [podMemory, tradeWatchTasks, budgetHistory] = await Promise.all([
+      loadPodMemoryRecords(30).catch(() => fundState.podMemory),
+      loadTradeWatchTasks(30).catch(() => [] as TradeWatchTask[]),
+      loadBudgetCommitteeHistory(30).catch(() => fundState.budgetCommitteeRecords)
+    ]);
     const activity = await getAuditEvents(30).catch(() => demoActivity);
     const redis = await redisHealth();
     const status = staticIntegrationStatus().map((item) => (item.name === "Redis" ? redis : item));
@@ -38,10 +51,20 @@ export async function runDemoWorkflow(): Promise<DemoRun> {
       podProposals: fundState.podProposals,
       executiveReviews: fundState.executiveReviews,
       crossPodBriefings: fundState.crossPodBriefings,
+      crossPodConflicts: fundState.crossPodConflicts,
+      podAttributions: fundState.podAttributions,
+      podMemory,
+      tradeWatchTasks,
+      budgetHistory,
       policySummary: policySummary(),
       integrationStatus: status
     };
   });
+}
+
+async function persistFundOperatingMemory(memory: PodMemoryRecord[], budgetRecords: BudgetCommitteeRecord[]) {
+  await Promise.all(memory.slice(0, 40).map((record) => savePodMemoryRecord(record)));
+  await Promise.all(budgetRecords.slice(0, 12).map((record) => appendBudgetCommitteeRecord(record)));
 }
 
 export function explainOpportunity(opportunity: Opportunity): string {

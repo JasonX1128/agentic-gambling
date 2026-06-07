@@ -19,5 +19,11 @@ export const redisKeys = {
   lock: (name: string) => redisKey("lock", name),
   idempotency: (key: string) => redisKey("idempotency", key),
   agentHeartbeat: (agentId: string) => redisKey("agent", agentId, "heartbeat"),
-  memory: (id: string) => redisKey("memory", id)
+  memory: (id: string) => redisKey("memory", id),
+  memoryIndex: () => redisKey("memory", "index"),
+  podMemoryIndex: (sector: string) => redisKey("memory", "pod", sector),
+  tradeWatchTask: (id: string) => redisKey("trade-watch", id),
+  tradeWatchIndex: () => redisKey("trade-watch", "index"),
+  budgetHistory: () => redisKey("budget", "history"),
+  operatorAudit: () => redisKey("operator", "audit")
 };

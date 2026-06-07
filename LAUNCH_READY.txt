@@ -24,6 +24,11 @@ and compliance.
 Browser Research Agent is now attached to trade execution review with a
 configurable public browser harness, sportsbook odds comparison, explicit
 missing-capability blockers, and Copilot/API controls.
+Fund governance now includes Redis-backed pod memory, pod/analyst attribution,
+cross-pod conflict escalation, budget committee history, post-fill trade watch
+tasks, live-order dry-run previews, and operator audit alerts.
+Realistic paper partial-fill/slippage simulation is intentionally deferred for
+the next fill-model pass.
 The prior compliance executive is removed and replaced by an interim compliance
 officer; compliance remains a protected non-vacant control seat and mandatory
 pre-trade gate.
