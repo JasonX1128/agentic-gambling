@@ -31,7 +31,7 @@ textarea {
 
 .dashboard-card-scroll {
   background: linear-gradient(to left, #e2e8f0 0 10px, transparent 10px);
-  max-height: clamp(260px, 42vh, 360px);
+  max-height: clamp(380px, 58vh, 520px);
   overflow-y: scroll;
   padding-right: 0.875rem;
   scrollbar-color: #94a3b8 #e2e8f0;

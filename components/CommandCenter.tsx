@@ -145,8 +145,8 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
         </aside>
 
         <section className="flex min-w-0 flex-col">
-          <header className="flex items-center justify-between border-b border-line bg-white px-5 py-3">
-            <div className="flex items-center gap-3">
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-white px-5 py-3">
+            <div className="flex flex-wrap items-center gap-3">
               <StatusPill tone={data.mode === "paper" ? "info" : "danger"}>{data.mode.toUpperCase()} MODE</StatusPill>
               <StatusPill tone={data.marketSource === "kalshi" && !data.marketBlocker ? "success" : "warning"}>
                 Kalshi market data: {data.marketSource}
@@ -160,7 +160,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
             </button>
           </header>
 
-          <div id="ledger-panel" className="scroll-mt-4 grid grid-cols-9 gap-3 border-b border-line bg-panel px-5 py-4">
+          <div id="ledger-panel" className="scroll-mt-4 grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] gap-3 border-b border-line bg-panel px-5 py-4">
             <Metric label="Net Liq" value={`$${data.portfolio.netLiquidationValue.toLocaleString()}`} />
             <Metric label="Total P&L" value={`$${data.portfolio.totalPnl.toLocaleString()}`} tone={data.portfolio.totalPnl >= 0 ? "positive" : "negative"} />
             <Metric label="Unrealized" value={`$${data.portfolio.unrealizedPnl.toLocaleString()}`} tone={data.portfolio.unrealizedPnl >= 0 ? "positive" : "negative"} />
@@ -172,7 +172,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
             <Metric label="Active/PIP" value={`${activePods.length}/${stressedPods.length}`} tone={stressedPods.length ? "negative" : undefined} />
           </div>
 
-          <div className="grid min-h-0 flex-1 grid-cols-[1.25fr_1.15fr_0.85fr] gap-4 p-5">
+          <div className="grid min-h-0 flex-1 grid-cols-2 gap-4 p-5">
             <Panel title="Kalshi Market Watchlist" icon={<Landmark className="h-4 w-4" />} id="markets-panel">
               {data.marketBlocker ? (
                 <div className="mb-3 rounded-md border border-warning bg-amber-50 p-3 text-xs leading-5 text-warning">
@@ -227,7 +227,7 @@ export function CommandCenter({ initialData }: { initialData: DemoRun }) {
               </div>
             </Panel>
 
-            <div className="space-y-4">
+            <div className="col-span-2 grid grid-cols-3 gap-4">
               <Panel title="Risk & Compliance" icon={<ShieldAlert className="h-4 w-4" />} id="risk-panel">
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
