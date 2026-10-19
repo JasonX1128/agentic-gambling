@@ -2,7 +2,7 @@
 import argparse,json,urllib.request,sys,datetime
 from pathlib import Path
 ROOT="https://site.api.espn.com/apis/site/v2/sports/"
-CASES=[("football/college-football","401856723"),("basketball/nba","401810610")]
+CASES=[("football/college-football","401856723"),("basketball/nba","AUTO:20261016")]
 def load(url):
     req=urllib.request.Request(url,headers={"User-Agent":"HistoricalSportsDataValidation/1.0"})
     with urllib.request.urlopen(req,timeout=25) as response:return json.load(response)
@@ -29,6 +29,12 @@ def main():
         rec={"league":league,"event":event}
         try:
             root=ROOT+league+"/"
+            if event.startswith("AUTO:"):
+                day=event.split(":")[1]
+                board=load(root+"scoreboard?dates="+day+"&limit=100")
+                finals=[e for e in board.get("events",[]) if e.get("status",{}).get("type",{}).get("completed")]
+                if not finals: raise RuntimeError("No historical completed events for "+day)
+                event=str(finals[0]["id"]);rec["event"]=event
             summary=load(root+"summary?event="+event)
             (out/(league.split("/")[-1]+"_schema.json")).write_text(json.dumps({
                 "top_level_keys":list(summary),
