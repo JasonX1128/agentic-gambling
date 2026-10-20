@@ -1,5 +1,5 @@
 name: ESPN historical play-by-play validation
-# Re-run with sequence-aware score diagnostics
+# Re-run with period-clock audit diagnostics
 on:
   push:
     branches: [main]
