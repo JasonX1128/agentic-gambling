@@ -1,4 +1,5 @@
 name: ESPN historical exotic settlements
+# Use elapsed-game-clock time for average-margin settlements
 on:
   workflow_dispatch:
   push:
