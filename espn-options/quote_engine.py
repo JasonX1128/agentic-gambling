@@ -21,9 +21,9 @@ def observed_scores(plays,home,away):
         if h is not None and a is not None:
             rows.append((number(h),number(a)))
     return [(0.,0.)]+rows if rows else [(0.,0.)]
-def options(path,strike,quarter_scores):
+def options(path,strike,quarter_scores,average_margin=None):
     hs,as_=path[-1];diffs=[h-a for h,a in path]; totals=[h+a for h,a in path]
-    high=max(diffs);low=min(diffs);avg=sum(diffs)/len(diffs)
+    high=max(diffs);low=min(diffs);avg=(sum(diffs)/len(diffs) if average_margin is None else average_margin)
     final=diffs[-1];total=totals[-1]
     qh,qa=quarter_scores
     return {
