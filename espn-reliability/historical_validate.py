@@ -22,6 +22,26 @@ def extract(summary):
     return max(candidates,key=lambda kv:len(kv[1])) if candidates else ("NONE",[])
 def score_pairs(plays):
     return [(int(p["homeScore"]),int(p["awayScore"])) for p in plays if p.get("homeScore") is not None and p.get("awayScore") is not None]
+def ordered(plays):
+    """ESPN lists may contain late inserts; use numeric sequenceNumber when present."""
+    indexed=list(enumerate(plays))
+    def key(item):
+        i,p=item
+        try:return (0,int(p["sequenceNumber"]),i)
+        except (ValueError,TypeError,KeyError):return (1,i,i)
+    return [p for _,p in sorted(indexed,key=key)]
+def score_diagnostics(plays):
+    states=[(p.get("id"),int(p["homeScore"]),int(p["awayScore"])) for p in plays
+            if p.get("homeScore") is not None and p.get("awayScore") is not None]
+    backwards=[];large=[];changes=[]
+    previous=(0,0)
+    for ident,h,a in states:
+        dh,da=h-previous[0],a-previous[1]
+        if dh<0 or da<0: backwards.append({"play_id":ident,"from":previous,"to":[h,a]})
+        if dh>8 or da>8: large.append({"play_id":ident,"delta":[dh,da]})
+        if dh or da:changes.append({"play_id":ident,"home":h,"away":a,"delta":[dh,da]})
+        previous=(h,a)
+    return states,backwards,large,changes
 def main():
     out=Path("historical-validation");out.mkdir(exist_ok=True)
     report=[];failed=False
@@ -46,7 +66,15 @@ def main():
             rec.update(source=source,play_count=len(plays),scored_states=len(score_pairs(plays)))
             rec["sample_play_keys"]=list(plays[0]) if plays else []
             rec["sample_play"]=plays[0] if plays else None
-            sc=score_pairs(plays)
+            plays=ordered(plays)
+            sc,backwards,large,changes=score_diagnostics(plays)
+            rec['backward_score_transitions']=backwards[:20]
+            rec['backward_count']=len(backwards)
+            rec['large_score_jumps']=large[:20]
+            rec['large_jump_count']=len(large)
+            rec['scoring_transitions']=len(changes)
+            (out/(league.split('/')[-1]+'_scoring.json')).write_text(json.dumps(changes,indent=2))
+            sc=[(x[1],x[2]) for x in sc]
             rec["score_states_monotone"]=all(b[0]>=a[0] and b[1]>=a[1] for a,b in zip(sc,sc[1:])) if sc else False
             # Consistency with final scoreboard. Scores can be absent from some play records.
             headers=summary.get("header",{}).get("competitions",[])
@@ -59,7 +87,7 @@ def main():
                     rec["final_match"]=sc[-1]==(home,away)
                 except Exception:rec["final_match"]=False
             else:rec["final_match"]=False
-            rec["pass"]=len(plays)>0 and len(sc)>0 and rec["score_states_monotone"] and rec["final_match"]
+            rec["pass"]=len(plays)>0 and len(sc)>0 and rec["score_states_monotone"] and rec["final_match"] and not large
         except Exception as exc:
             rec["pass"]=False;rec["error"]=str(exc)
         report.append(rec)
