@@ -51,6 +51,52 @@ def reconstruct(raw):
         qh.append(max(0.,after[0]-before[0]));qa.append(max(0.,after[1]-before[1]))
         before=after
     return path,(qh,qa),raw_backwards
+def elapsed_seconds(play,league):
+    """Game-clock seconds since tip/kickoff, ignoring breaks in real wall time."""
+    q=period(play)
+    if q<1:return None
+    remaining=seconds(play)
+    if league=="basketball/nba":
+        length=720 if q<=4 else 300
+        start=(q-1)*720 if q<=4 else 2880+(q-5)*300
+    elif league=="football/college-football":
+        length=900
+        start=(q-1)*900
+    else:raise ValueError("Unknown league: "+league)
+    if not 0<=remaining<=length: return None
+    return start+length-remaining
+
+def time_weighted_average(raw,league,final_score):
+    """Integrate score differential between ESPN game-clock timestamps.
+
+    Scores are right-continuous after each timestamp. Same-clock plays
+    are collapsed to one state; final state is official at the final whistle.
+    """
+    n=max(period(p) for p in raw)
+    if league=="basketball/nba":
+        end=2880+max(0,n-4)*300
+    elif league=="football/college-football":
+        end=max(4,n)*900
+    else:raise ValueError("unknown league")
+    ordered=sorted(enumerate(raw),key=lambda x:(elapsed_seconds(x[1],league) if elapsed_seconds(x[1],league) is not None else float('inf'),x[0]))
+    states={}
+    last=(0.,0.)
+    for _,p in ordered:
+        t=elapsed_seconds(p,league)
+        if t is None or t>end:continue
+        if p.get("homeScore") is None or p.get("awayScore") is None:continue
+        h,a=float(p["homeScore"]),float(p["awayScore"])
+        # Identical tolerant correction policy to reconstruct(); not official settlement.
+        last=(max(h,last[0]),max(a,last[1]))
+        states[t]=last
+    integral=0.;prior_t=0.;prior_margin=0.
+    for t,(h,a) in sorted(states.items()):
+        integral+=prior_margin*(t-prior_t)
+        prior_t=t;prior_margin=h-a
+    integral+=prior_margin*(end-prior_t)
+    return integral/end,{"elapsed_game_seconds":end,"timestamp_count":len(states),
+                         "integration_points":len(states)+2}
+
 def game(league,event,strike):
     s=get(ROOT+league+"/summary?event="+event)
     header=(s.get("header",{}).get("competitions") or [{}])[0]
@@ -67,7 +113,8 @@ def game(league,event,strike):
     path,quarters,backwards=reconstruct(raw)
     official=(float(home["score"]),float(away["score"]))
     if path[-1]!=official:raise ValueError("last reconstructed score "+str(path[-1])+" != official "+str(official))
-    pays=options(path,strike,quarters)
+    avg_margin,time_meta=time_weighted_average(raw,league,official)
+    pays=options(path,strike,quarters,average_margin=avg_margin)
     names=lambda c:c.get("team",{}).get("abbreviation",c.get("team",{}).get("displayName","?"))
     meta={"league":league,"event_id":event,"matchup":names(away)+" @ "+names(home),
           "home":names(home),"away":names(away),"official_home":official[0],
@@ -75,7 +122,8 @@ def game(league,event,strike):
           "backward_score_snapshots":len(backwards),"path_states":len(path),
           "low_home_margin":min(h-a for h,a in path),"high_home_margin":max(h-a for h,a in path),
           "quarter_home":quarters[0],"quarter_away":quarters[1],
-          "warning":"Historical ESPN event scores; max-envelope correction for backward snapshots; average_margin is per-play, not time-weighted."}
+          "time_weighted_average_margin":avg_margin,**time_meta,
+          "warning":"Historical ESPN event scores; max-envelope correction for backward snapshots; average_margin uses ESPN elapsed game-clock seconds; backward score snapshots are clamped."}
     return meta,pays,backwards
 def main():
     ap=argparse.ArgumentParser()
@@ -110,11 +158,12 @@ def main():
         (out/"settlements.json").write_text(json.dumps(rows,indent=2))
     txt=["# Historical ESPN exotic option settlements","",
          "Payoffs use the 19 existing contract definitions in espn-options/quote_engine.py.",
+         "The average-margin contract now integrates home-away score differential against GAME time, not play count.",
          "The contract definitions are illustrative, not exchange specifications.",
          "Historical NBA scores come from completed game summaries; football is a pipeline sanity check.",
          "Scores are sorted by period and clock, then transient backward scores are clamped to the last observed score.",
          "This may conceal true corrections. Do not use for cash settlement without independent validation.",
-         "The 'average_margin_home_call_K0' is **play-event-weighted**, not elapsed-time-weighted.",
+         "The 'average_margin_home_call_K0' is **elapsed game-clock-time-weighted** (NBA 12-minute regulation periods and 5-minute overtimes, CFB 15-minute quarters).",
          "Quarter-derived contracts use score differences between observed end-of-period states.",
          "Out-of-order ties and missing quarter-end plays could alter settlements.","",
          "Games succeeded: "+str(len(diagnostics))+"; failures: "+str(len(failures))+".","",
