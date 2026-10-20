@@ -42,6 +42,27 @@ def score_diagnostics(plays):
         if dh or da:changes.append({"play_id":ident,"home":h,"away":a,"delta":[dh,da]})
         previous=(h,a)
     return states,backwards,large,changes
+def time_order(plays):
+    def key(p):
+        period=p.get('period') or {}
+        clock=p.get('clock') or {}
+        period=period.get('number',0) if isinstance(period,dict) else period
+        clock=clock.get('displayValue','0:00') if isinstance(clock,dict) else str(clock)
+        try: sec=sum(float(n)*60**i for i,n in enumerate(reversed(clock.split(':'))))
+        except (ValueError,TypeError): sec=0
+        return (int(period or 0),-sec)
+    return sorted(plays,key=key)
+def audit(plays):
+    prior=(0,0); bad=[]
+    for i,p in enumerate(plays):
+        if p.get('homeScore') is None or p.get('awayScore') is None:continue
+        score=(int(p['homeScore']),int(p['awayScore']))
+        delta=(score[0]-prior[0],score[1]-prior[1])
+        if min(delta)<0 or max(delta)>8 or (delta[0]>0 and delta[1]>0):
+            bad.append({'id':p.get('id'),'period':p.get('period'),'clock':p.get('clock'),'sequence':p.get('sequenceNumber'),'text':p.get('text'),'before':prior,'after':score,'delta':delta,'context':[{k:q.get(k) for k in ('id','sequenceNumber','period','clock','homeScore','awayScore','text')} for q in plays[max(0,i-2):i+3]]})
+        prior=score
+    return bad
+
 def main():
     out=Path("historical-validation");out.mkdir(exist_ok=True)
     report=[];failed=False
@@ -75,6 +96,12 @@ def main():
             rec['scoring_transitions']=len(changes)
             (out/(league.split('/')[-1]+'_scoring.json')).write_text(json.dumps(changes,indent=2))
             sc=[(x[1],x[2]) for x in sc]
+            chrono=time_order(plays)
+            bad=audit(chrono)
+            rec['chronological_anomaly_count']=len(bad)
+            rec['chronological_anomaly_sample']=bad[:5]
+            (out/(league.split('/')[-1]+'_anomalies.json')).write_text(json.dumps(bad,indent=2))
+            rec['chrono_final_match']=bool(score_pairs(chrono)) and score_pairs(chrono)[-1]==sc[-1]
             rec["score_states_monotone"]=all(b[0]>=a[0] and b[1]>=a[1] for a,b in zip(sc,sc[1:])) if sc else False
             # Consistency with final scoreboard. Scores can be absent from some play records.
             headers=summary.get("header",{}).get("competitions",[])
@@ -87,7 +114,7 @@ def main():
                     rec["final_match"]=sc[-1]==(home,away)
                 except Exception:rec["final_match"]=False
             else:rec["final_match"]=False
-            rec["pass"]=len(plays)>0 and len(sc)>0 and rec["score_states_monotone"] and rec["final_match"] and not large
+            rec["pass"]=len(plays)>0 and len(sc)>0 and len(bad)==0 and rec["final_match"] and rec["chrono_final_match"]
         except Exception as exc:
             rec["pass"]=False;rec["error"]=str(exc)
         report.append(rec)
